@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}Delete {{ cfg.singular }}{% endblock %}
 {% block heading %}Delete {{ cfg.singular }}?{% endblock %}
 {% block crumb %}{{ company.name }} · {{ cfg.title }}{% endblock %}
 {% block content %}
 <div class="card" style="max-width:560px">
-  <h3>⚠️ Confirm deletion</h3>
+  <h3><span class="h-ico" style="color:#f87171">{% icon 'alert' 22 %}</span> Confirm deletion</h3>
   <div class="sub">You are about to permanently delete <b>{{ obj }}</b>. This cannot be undone.</div>
   <form method="post">
     {% csrf_token %}

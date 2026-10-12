@@ -1,17 +1,18 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}Reports & BI — {{ company.name }}{% endblock %}
-{% block heading %}📈 Reports & Business Intelligence{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'chart' 24 %}</span> Reports &amp; Business Intelligence{% endblock %}
 {% block crumb %}{{ company.name }} · Fleet, Financial &amp; Operational Analytics{% endblock %}
 {% block content %}
 <div class="kpi-grid">
-  <div class="kpi" style="--kc:#22c55e"><div class="k-ico">💰</div><div class="k-val">{{ total_rev|floatformat:0 }}</div><div class="k-lbl">Trip Revenue (ETB)</div><div class="k-sub">completed trips</div></div>
-  <div class="kpi" style="--kc:#ef4444"><div class="k-ico">🧾</div><div class="k-val">{{ total_cost|floatformat:0 }}</div><div class="k-lbl">Trip Costs (ETB)</div><div class="k-sub">fuel + expenses</div></div>
-  <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">📊</div><div class="k-val">{{ margin|floatformat:0 }}</div><div class="k-lbl">Gross Margin (ETB)</div></div>
-  <div class="kpi" style="--kc:#a855f7"><div class="k-ico">⏱️</div><div class="k-val">{{ on_time_pct }}%</div><div class="k-lbl">On-Time Delivery</div><div class="k-sub">{{ delivered_count }} deliveries measured</div></div>
+  <div class="kpi" style="--kc:#22c55e"><div class="k-ico">{% icon 'receipt' 22 %}</div><div class="k-val">{{ total_rev|floatformat:0 }}</div><div class="k-lbl">Trip Revenue (ETB)</div><div class="k-sub">completed trips</div></div>
+  <div class="kpi" style="--kc:#ef4444"><div class="k-ico">{% icon 'wallet' 22 %}</div><div class="k-val">{{ total_cost|floatformat:0 }}</div><div class="k-lbl">Trip Costs (ETB)</div><div class="k-sub">fuel + expenses</div></div>
+  <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">{% icon 'chart' 22 %}</div><div class="k-val">{{ margin|floatformat:0 }}</div><div class="k-lbl">Gross Margin (ETB)</div></div>
+  <div class="kpi" style="--kc:#a855f7"><div class="k-ico">{% icon 'timer' 22 %}</div><div class="k-val">{{ on_time_pct }}%</div><div class="k-lbl">On-Time Delivery</div><div class="k-sub">{{ delivered_count }} deliveries measured</div></div>
 </div>
 
 <div class="card">
-  <h3>🚚 Fleet Utilization &amp; Cost Efficiency</h3>
+  <h3><span class="h-ico">{% icon 'gauge' 20 %}</span> Fleet Utilization &amp; Cost Efficiency</h3>
   <div class="sub">Per-vehicle performance: trips, distance, fuel efficiency and cost per km</div>
   <table class="tbl"><thead><tr><th>Vehicle</th><th>Type</th><th>Trips</th><th>Distance (km)</th><th>Fuel (L)</th><th>km / L</th><th>Fuel Cost</th><th>Maint. Cost</th><th>Cost / km</th></tr></thead>
   <tbody>
@@ -25,7 +26,7 @@
 </div>
 
 <div class="card">
-  <h3>💹 Trip Profitability</h3>
+  <h3><span class="h-ico">{% icon 'chart' 20 %}</span> Trip Profitability</h3>
   <div class="sub">Revenue vs cost per completed trip (latest 20)</div>
   <table class="tbl"><thead><tr><th>Trip</th><th>Route</th><th>Vehicle</th><th>Cost (ETB)</th><th>Revenue (ETB)</th><th>Margin</th></tr></thead>
   <tbody>

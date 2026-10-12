@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}Payroll Run — {{ company.name }}{% endblock %}
-{% block heading %}💳 Payroll Run{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'card' 24 %}</span> Payroll Run{% endblock %}
 {% block crumb %}{{ company.name }} · HR &amp; Payroll{% endblock %}
 {% block content %}
 <div class="card" style="max-width:640px">
@@ -11,7 +12,7 @@
     <label class="lbl">Payroll Month</label>
     <input class="input" type="month" name="month" required value="{% now 'Y-m' %}">
     <div style="margin-top:16px"><b>{{ employees|length }}</b> active employees will be included.</div>
-    <div style="margin-top:18px"><button class="btn btn-primary" type="submit">▶ Run Payroll</button>
+    <div style="margin-top:18px"><button class="btn btn-primary" type="submit"><span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 15 %}</span> Run Payroll</button>
     <a class="btn btn-ghost" href="{% url 'fleet_payrolls' company_slug=company.slug %}">Cancel</a></div>
   </form>
 </div>

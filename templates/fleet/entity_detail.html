@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}{{ obj }} — {{ cfg.title }}{% endblock %}
-{% block heading %}{{ cfg.icon }} {{ obj }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon cfg.icon 24 %}</span> {{ obj }}{% endblock %}
 {% block crumb %}{{ company.name }} · {{ cfg.title }}{% endblock %}
 {% block content %}
 <div class="toolbar">
-  <a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_list' company_slug=company.slug entity=entity %}">← Back to {{ cfg.title }}</a>
+  <a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_list' company_slug=company.slug entity=entity %}"><span style="display:inline-flex;vertical-align:-3px">{% icon 'back' 14 %}</span> Back to {{ cfg.title }}</a>
   {% if membership.can_edit %}
   <div style="display:flex;gap:8px">
-    <a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_update' company_slug=company.slug entity=entity pk=obj.pk %}">✏️ Edit</a>
-    <a class="btn btn-danger btn-sm" href="{% url 'fleet_entity_delete' company_slug=company.slug entity=entity pk=obj.pk %}">🗑 Delete</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_update' company_slug=company.slug entity=entity pk=obj.pk %}">{% icon 'pencil' 14 %} Edit</a>
+    <a class="btn btn-danger btn-sm" href="{% url 'fleet_entity_delete' company_slug=company.slug entity=entity pk=obj.pk %}">{% icon 'trash' 14 %} Delete</a>
   </div>
   {% endif %}
 </div>
@@ -32,7 +33,7 @@
     {% endfor %}
     {% if entity == "invoices" and membership.can_finance %}
     <div class="card">
-      <h3>💳 Record Payment</h3><div class="sub">Applies to invoice {{ obj.invoice_no }} ({{ obj.total }} ETB)</div>
+      <h3><span class="h-ico">{% icon 'card' 20 %}</span> Record Payment</h3><div class="sub">Applies to invoice {{ obj.invoice_no }} ({{ obj.total }} ETB)</div>
       <form method="post" action="{% url 'fleet_invoice_pay' company_slug=company.slug pk=obj.pk %}">
         {% csrf_token %}
         <div class="form-grid">

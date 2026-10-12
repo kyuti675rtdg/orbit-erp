@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}{{ mode }} {{ cfg.singular }}{% endblock %}
 {% block heading %}{{ mode }} {{ cfg.singular }}{% endblock %}
 {% block crumb %}{{ company.name }} · {{ cfg.title }}{% endblock %}
 {% block content %}
 <div class="card" style="max-width:860px">
-  <h3>{{ cfg.icon }} {{ cfg.singular }}</h3>
+  <h3><span class="h-ico">{% icon cfg.icon 22 %}</span> {{ cfg.singular }}</h3>
   <div class="sub">Fields marked by your workflow — all data is saved to the company database.</div>
   <form method="post">
     {% csrf_token %}
@@ -20,7 +21,7 @@
       {% endfor %}
     </div>
     <div style="margin-top:22px;display:flex;gap:10px">
-      <button class="btn btn-primary" type="submit">💾 Save {{ cfg.singular }}</button>
+      <button class="btn btn-primary" type="submit">{% icon 'check' 15 %} Save {{ cfg.singular }}</button>
       <a class="btn btn-ghost" href="{% url 'fleet_entity_list' company_slug=company.slug entity=entity %}">Cancel</a>
     </div>
   </form>

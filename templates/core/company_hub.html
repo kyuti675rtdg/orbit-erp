@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}My Companies — Orbit ERP{% endblock %}
 {% block heading %}My Companies{% endblock %}
 {% block crumb %}Orbit ERP · Company Hub{% endblock %}
 {% block content %}
 <div class="toolbar">
   <div><h3 style="margin:0">Select a workspace</h3><div class="sub" style="color:var(--muted);font-size:13px">Each company gets a dedicated, isolated ERP workspace.</div></div>
-  <a class="btn btn-primary" href="{% url 'company_create' %}">➕ Register New Company</a>
+  <a class="btn btn-primary" href="{% url 'company_create' %}">{% icon 'plus' 16 %} Register New Company</a>
 </div>
 <div class="co-grid">
   {% for mc in memberships %}
@@ -16,11 +17,11 @@
       <span class="badge b-orange">{{ mc.get_role_display }}</span>
       <span class="badge b-gray">{{ mc.company.get_plan_display }}</span>
     </div>
-    <span class="btn btn-ghost btn-sm">Open Workspace →</span>
+    <span class="btn btn-ghost btn-sm">Open Workspace <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 14 %}</span></span>
   </a>
   {% empty %}
-  <div class="card"><div class="empty"><div class="big">🏢</div><b>No companies yet.</b><br>Register your first company to open its ERP workspace.</div></div>
+  <div class="card"><div class="empty"><div class="empty-ico">{% icon 'building' 34 %}</div><b>No companies yet.</b><br>Register your first company to open its ERP workspace.</div></div>
   {% endfor %}
-  <a class="co-new" href="{% url 'company_create' %}"><div style="font-size:34px">＋</div>Register New Company</a>
+  <a class="co-new" href="{% url 'company_create' %}"><span style="display:inline-flex;color:var(--orange)">{% icon 'plus' 30 %}</span>Register New Company</a>
 </div>
 {% endblock %}

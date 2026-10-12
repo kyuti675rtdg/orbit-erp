@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}Live Tracking — {{ company.name }}{% endblock %}
-{% block heading %}🛰️ Live Fleet Tracking{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'tracking' 24 %}</span> Live Fleet Tracking{% endblock %}
 {% block crumb %}{{ company.name }} · GPS Tracking &amp; Monitoring{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="/static/css/leaflet.css">
@@ -14,13 +15,13 @@
 {% block content %}
 <div class="toolbar">
   <div style="display:flex;align-items:center;gap:10px"><span class="pulse"></span><b>{{ trips|length }} vehicles en route</b><span style="color:var(--muted);font-size:12.5px">· auto-refreshes every 20s</span></div>
-  <a class="btn btn-ghost btn-sm" href="{% url 'fleet_dashboard' company_slug=company.slug %}">← Dashboard</a>
+  <a class="btn btn-ghost btn-sm" href="{% url 'fleet_dashboard' company_slug=company.slug %}"><span style="display:inline-flex;vertical-align:-3px">{% icon 'back' 14 %}</span> Dashboard</a>
 </div>
 <div class="card" style="padding:12px">
   <div class="map-wrap"><div id="trackmap"></div></div>
 </div>
 <div class="card">
-  <h3>🚚 Vehicles on the Road</h3><div class="sub">Live status from GPS telemetry</div>
+  <h3><span class="h-ico">{% icon 'truck' 20 %}</span> Vehicles on the Road</h3><div class="sub">Live status from GPS telemetry</div>
   <table class="tbl"><thead><tr><th>Trip</th><th>Vehicle</th><th>Driver</th><th>Route</th><th>Speed</th><th>Last Update</th><th></th></tr></thead>
   <tbody id="trackrows"></tbody></table>
 </div>
@@ -34,7 +35,7 @@ const geofences = JSON.parse(document.getElementById('geodata').textContent);
 const map = L.map('trackmap').setView([9.0, 39.5], 6);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution:'© OpenStreetMap © CARTO'}).addTo(map);
 const markers = {};
-function truckIcon(){ return L.divIcon({html:'<div style="font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))">🚚</div>', iconSize:[30,30], iconAnchor:[15,15]}); }
+function truckIcon(){ return L.divIcon({html:'<div class="truck-badge"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff7a18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6h12v10h-12z"/><path d="M13.5 10h4l3.5 3.5V16h-7.5"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17" cy="18.5" r="1.8"/></svg></div>', iconSize:[36,36], iconAnchor:[18,18]}); }
 tracks.forEach(t => {
   const mk = L.marker([t.lat, t.lng], {icon: truckIcon()}).addTo(map);
   mk.bindPopup(`<b>${t.trip_no}</b> · ${t.vehicle}<br>${t.route}<br>Driver: ${t.driver}<br>Speed: ${t.speed} km/h<br>Cargo: ${t.cargo||'—'}`);

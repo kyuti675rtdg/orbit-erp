@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% load icons %}
 {% block title %}Register Company — Orbit ERP{% endblock %}
 {% block heading %}Register a Company{% endblock %}
 {% block crumb %}Orbit ERP · Company Hub{% endblock %}
 {% block content %}
 <div class="card" style="max-width:760px">
-  <h3>🏢 Company Registration</h3>
+  <h3><span class="h-ico">{% icon 'building' 22 %}</span> Company Registration</h3>
   <div class="sub">Register a client company on the Orbit ERP platform. You will become its <b>Owner</b> with full administrative access, and a dedicated ERP workspace will be created instantly.</div>
   <form method="post">
     {% csrf_token %}

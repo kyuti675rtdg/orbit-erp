@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load icons %}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -37,18 +37,18 @@
           {% if item.3 %}
             <div class="nav-sec">{{ item.0 }}</div>
             {% for c in item.3 %}
-              <a class="nl {% if request.resolver_match.url_name == c.2 %}on{% endif %}" href="{% url c.2 company_slug=active_company.slug %}"><span class="ico">{{ c.1 }}</span>{{ c.0 }}</a>
+              <a class="nl {% if request.resolver_match.url_name == c.2 %}on{% endif %}" href="{% url c.2 company_slug=active_company.slug %}"><span class="ico">{% icon c.1 %}</span>{{ c.0 }}</a>
             {% endfor %}
           {% else %}
-            <a class="nl {% if request.resolver_match.url_name == item.2 %}on{% endif %}" href="{% url item.2 company_slug=active_company.slug %}"><span class="ico">{{ item.1 }}</span>{{ item.0 }}</a>
+            <a class="nl {% if request.resolver_match.url_name == item.2 %}on{% endif %}" href="{% url item.2 company_slug=active_company.slug %}"><span class="ico">{% icon item.1 %}</span>{{ item.0 }}</a>
           {% endif %}
         {% endfor %}
         <div class="nav-sec">Workspace</div>
-        <a class="nl" href="{% url 'workspace' company_slug=active_company.slug %}"><span class="ico">🏠</span>Module Hub</a>
-        <a class="nl" href="{% url 'company_hub' %}"><span class="ico">🏢</span>All Companies</a>
+        <a class="nl" href="{% url 'workspace' company_slug=active_company.slug %}"><span class="ico">{% icon 'home' %}</span>Module Hub</a>
+        <a class="nl" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' %}</span>All Companies</a>
       {% else %}
-        <a class="nl {% if request.resolver_match.url_name == 'company_hub' %}on{% endif %}" href="{% url 'company_hub' %}"><span class="ico">🏢</span>My Companies</a>
-        <a class="nl {% if request.resolver_match.url_name == 'company_create' %}on{% endif %}" href="{% url 'company_create' %}"><span class="ico">➕</span>Register Company</a>
+        <a class="nl {% if request.resolver_match.url_name == 'company_hub' %}on{% endif %}" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' %}</span>My Companies</a>
+        <a class="nl {% if request.resolver_match.url_name == 'company_create' %}on{% endif %}" href="{% url 'company_create' %}"><span class="ico">{% icon 'plus' %}</span>Register Company</a>
       {% endif %}
     </nav>
     <div class="side-foot">Orbit Technology Solution PLC<br>Turn Ideas Into Reality</div>
