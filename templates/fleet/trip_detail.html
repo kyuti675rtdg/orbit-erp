@@ -95,7 +95,14 @@
 const pings = JSON.parse(document.getElementById('pingdata').textContent);
 const origin = {{ origin|safe }}, dest = {{ dest|safe }};
 const map = L.map('tripmap').setView([(origin[0]+dest[0])/2, (origin[1]+dest[1])/2], 7);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+function orbitTileUrl(){ return document.documentElement.getAttribute('data-theme') === 'light'
+  ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'; }
+let orbitTiles = L.tileLayer(orbitTileUrl(), {attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+document.addEventListener('orbit-theme-change', () => {
+  map.removeLayer(orbitTiles);
+  orbitTiles = L.tileLayer(orbitTileUrl(), {attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+});
 L.marker(origin).addTo(map).bindPopup('Origin');
 L.marker(dest).addTo(map).bindPopup('Destination');
 if (pings.length) {

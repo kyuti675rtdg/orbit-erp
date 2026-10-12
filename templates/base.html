@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/app.css">
+<script>
+/* apply saved theme before paint (no flash) */
+try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t === 'dark') document.documentElement.setAttribute('data-theme', __t); } catch (e) {}
+</script>
 <script src="/static/js/chart.umd.min.js"></script>
 {% block head %}{% endblock %}
 </head>
@@ -61,6 +65,9 @@
         <h1>{% block heading %}Dashboard{% endblock %}</h1>
       </div>
       <div class="user-chip">
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch light / dark theme" title="Switch light / dark theme">
+          <span class="icon-moon">{% icon 'moon' 17 %}</span><span class="icon-sun">{% icon 'sun' 17 %}</span>
+        </button>
         <div class="avatar">{{ request.user.username|first|upper }}</div>
         <div><div style="font-weight:700;font-size:13px">{{ request.user.username }}</div>
         <div style="font-size:11px;color:var(--muted)">{% if active_membership %}{{ active_membership.get_role_display }}{% else %}Member{% endif %}</div></div>
@@ -74,5 +81,15 @@
   </div>
 </div>
 {% block foot %}{% endblock %}
+<script>
+function orbitTheme(){ return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+function toggleTheme(){
+  var next = orbitTheme() === 'light' ? 'dark' : 'light';
+  if (next === 'dark') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'light');
+  try { localStorage.setItem('orbit-theme', next); } catch (e) {}
+  document.dispatchEvent(new CustomEvent('orbit-theme-change', {detail: {theme: next}}));
+}
+</script>
 </body>
 </html>

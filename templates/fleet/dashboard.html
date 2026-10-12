@@ -85,9 +85,27 @@
 <script id="chartdata" type="application/json">{{ charts_json|safe }}</script>
 <script>
 const C = JSON.parse(document.getElementById('chartdata').textContent);
-Chart.defaults.color = '#9aa6b8';
-Chart.defaults.borderColor = 'rgba(43,52,66,.6)';
-const grid = {color: 'rgba(43,52,66,.4)'};
+function orbitPalette(){
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  return {
+    text: light ? '#5d6c83' : '#9aa6b8',
+    border: light ? 'rgba(150,165,185,.5)' : 'rgba(43,52,66,.6)',
+    grid: light ? 'rgba(150,165,185,.35)' : 'rgba(43,52,66,.4)'
+  };
+}
+function applyChartTheme(){
+  const p = orbitPalette();
+  Chart.defaults.color = p.text;
+  Chart.defaults.borderColor = p.border;
+  (Chart.instances ? Object.values(Chart.instances) : []).forEach(ch => {
+    if (!ch || !ch.options || !ch.options.scales) return;
+    ['x','y'].forEach(ax => { if (ch.options.scales[ax] && ch.options.scales[ax].grid) ch.options.scales[ax].grid.color = p.grid; });
+    ch.update();
+  });
+}
+applyChartTheme();
+document.addEventListener('orbit-theme-change', applyChartTheme);
+const grid = {color: orbitPalette().grid};
 function line(el, labels, datasets){
   new Chart(document.getElementById(el), {
     type: 'line',

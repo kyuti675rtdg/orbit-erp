@@ -47,3 +47,11 @@ Dispatch → GPS / Live Monitoring → Delivery → POD → Trip Settlement → 
 - `DATABASE_URL` env switches to PostgreSQL; Render auto-trusts `RENDER_EXTERNAL_HOSTNAME`
   for ALLOWED_HOSTS and CSRF (same pattern as hms-enterprise).
 - `seed.py` wipes + reseeds the two demo companies (idempotent for demos).
+
+## UI Icon System (2026-10-13)
+
+All emojis were removed from the interface and replaced with a professional
+stroke-style SVG icon set (`core/templatetags/icons.py`, 45 icons). Usage in
+templates: `{% load icons %}` then `{% icon 'truck' %}` or `{% icon name 20 %}`.
+Nav/entity/workspace icons are icon *names* (not glyphs) defined in
+`fleet/views.py` (`NAV`, `ENTITIES`) and `core/views.py` (module cards).
