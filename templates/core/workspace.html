@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} — Workspace{% endblock %}
+{% block heading %}{{ company.name }}{% endblock %}
+{% block crumb %}ERP Workspace · {{ company.city|default:company.country }}{% endblock %}
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi" style="--kc:#ff7a18"><div class="k-ico">🚚</div><div class="k-val">{{ kpis.vehicles }}</div><div class="k-lbl">Active Vehicles</div></div>
+  <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">🛣️</div><div class="k-val">{{ kpis.active_trips }}</div><div class="k-lbl">Active Trips</div><div class="k-sub">planned · dispatched · en route</div></div>
+  <div class="kpi" style="--kc:#22c55e"><div class="k-ico">📬</div><div class="k-val">{{ kpis.deliveries_month }}</div><div class="k-lbl">Deliveries This Month</div></div>
+  <div class="kpi" style="--kc:#a855f7"><div class="k-ico">💰</div><div class="k-val">{{ kpis.receivable|floatformat:0 }}</div><div class="k-lbl">Receivable (ETB)</div><div class="k-sub">open invoices</div></div>
+</div>
+
+<h3 style="margin:4px 0 14px">ERP Modules</h3>
+<div class="mod-grid">
+  {% for mod in modules %}
+  <a class="mod-card" href="{% url mod.url company_slug=company.slug %}">
+    <div class="m-ico">{{ mod.icon }}</div>
+    <h3>{{ mod.name }}</h3>
+    <p>{{ mod.desc }}</p>
+    <span class="btn btn-ghost btn-sm">Open Module →</span>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card" style="margin-top:20px">
+  <h3>🕘 Recent Trips</h3>
+  <div class="sub">Latest transport activity across the company</div>
+  <table class="tbl">
+    <thead><tr><th>Trip</th><th>Route</th><th>Vehicle</th><th>Driver</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for t in recent_trips %}
+      <tr>
+        <td><a href="{% url 'fleet_entity_detail' company_slug=company.slug entity='trips' pk=t.pk %}" style="color:var(--orange2);font-weight:600">{{ t.trip_no }}</a></td>
+        <td>{{ t.route.name }}</td><td>{{ t.vehicle.plate_no }}</td><td>{{ t.driver.name }}</td>
+        <td><span class="badge {% if t.status == 'completed' %}b-green{% elif t.status == 'en_route' %}b-blue{% elif t.status == 'cancelled' %}b-red{% else %}b-amber{% endif %}">{{ t.get_status_display }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" style="color:var(--muted)">No trips yet — open the Transport &amp; Fleet module to create one.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

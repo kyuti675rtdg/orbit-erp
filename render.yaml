@@ -1,0 +1,39 @@
+# Render Blueprint for Orbit ERP (Django 5.2 + PostgreSQL 16)
+#
+# Deploy via API (see project notes) or Dashboard -> New -> Blueprint.
+# First boot automatically runs migrations + demo seed (seed_demo skips
+# when companies already exist, so it never wipes real data).
+#
+# FREE-TIER REALITY:
+# - Web service sleeps after ~15 min idle; first request after that takes
+#   ~30-60s to wake. Fine for demos/evaluation.
+# - Free PostgreSQL EXPIRES 30 days after creation; data is deleted unless
+#   the database is upgraded (~$7/mo) before then.
+
+databases:
+  - name: orbiterp-db
+    databaseName: orbiterp
+    user: orbiterp
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: orbit-erp
+    env: python
+    plan: free
+    region: frankfurt
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "python manage.py migrate --noinput && python manage.py seed_demo && gunicorn orbit_erp.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
+    healthCheckPath: /login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orbiterp-db
+          property: connectionString

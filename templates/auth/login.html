@@ -1,0 +1,16 @@
+{% extends "auth/base_auth.html" %}
+{% block title %}Orbit ERP — Sign in{% endblock %}
+{% block box %}
+<h2>Welcome back 👋</h2>
+<div class="sub">Sign in to access your company workspaces.</div>
+{% if form.errors %}<div class="msg msg-error">Invalid username or password. Please try again.</div>{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <label class="lbl" for="id_username">Username</label>
+  <input class="input" type="text" name="username" id="id_username" required autofocus placeholder="your username">
+  <label class="lbl" for="id_password">Password</label>
+  <input class="input" type="password" name="password" id="id_password" required placeholder="••••••••">
+  <div style="margin-top:22px"><button class="btn btn-primary" style="width:100%;justify-content:center" type="submit">Sign In →</button></div>
+</form>
+<div style="margin-top:18px;text-align:center;font-size:13.5px;color:var(--muted)">New to Orbit ERP? <a href="{% url 'signup' %}" style="color:var(--orange2);font-weight:600">Create an account</a></div>
+{% endblock %}

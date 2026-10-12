@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Transport Dashboard — {{ company.name }}{% endblock %}
+{% block heading %}🚚 Transport Dashboard{% endblock %}
+{% block crumb %}{{ company.name }} · Transport &amp; Fleet Management{% endblock %}
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi" style="--kc:#ff7a18"><div class="k-ico">🚚</div><div class="k-val">{{ kpis.vehicles }}</div><div class="k-lbl">Fleet Vehicles</div><div class="k-sub">{{ kpis.on_trip }} on trip now</div></div>
+  <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">🛣️</div><div class="k-val">{{ kpis.active_trips }}</div><div class="k-lbl">Active Trips</div><div class="k-sub">live operations</div></div>
+  <div class="kpi" style="--kc:#22c55e"><div class="k-ico">🧑‍✈️</div><div class="k-val">{{ kpis.drivers_avail }}</div><div class="k-lbl">Drivers Available</div><div class="k-sub">ready for assignment</div></div>
+  <div class="kpi" style="--kc:#14b8a6"><div class="k-ico">📬</div><div class="k-val">{{ kpis.deliveries_month }}</div><div class="k-lbl">Deliveries / Month</div></div>
+  <div class="kpi" style="--kc:#f59e0b"><div class="k-ico">⛽</div><div class="k-val">{{ kpis.fuel_month|floatformat:0 }}</div><div class="k-lbl">Fuel Cost (ETB)</div><div class="k-sub">this month</div></div>
+  <div class="kpi" style="--kc:#a855f7"><div class="k-ico">🔧</div><div class="k-val">{{ kpis.maint_month|floatformat:0 }}</div><div class="k-lbl">Maintenance (ETB)</div><div class="k-sub">this month</div></div>
+  <div class="kpi" style="--kc:#ef4444"><div class="k-ico">💰</div><div class="k-val">{{ kpis.receivable|floatformat:0 }}</div><div class="k-lbl">Receivable (ETB)</div><div class="k-sub">open invoices</div></div>
+  <div class="kpi" style="--kc:#eab308"><div class="k-ico">🔔</div><div class="k-val">{{ kpis.open_alerts }}</div><div class="k-lbl">Open Alerts</div><div class="k-sub">needs attention</div></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>📊 Revenue vs Collections <span style="color:var(--muted);font-weight:400;font-size:12px">(last 6 months, ETB)</span></h3>
+    <div class="sub">Billed transport revenue against cash collected</div>
+    <div class="chart-box"><canvas id="chRevenue"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>⛽ Fuel Cost Trend <span style="color:var(--muted);font-weight:400;font-size:12px">(ETB)</span></h3>
+    <div class="sub">Monthly fuel spend across the fleet</div>
+    <div class="chart-box"><canvas id="chFuel"></canvas></div>
+  </div>
+</div>
+
+<div class="grid3">
+  <div class="card">
+    <h3>🛣️ Trips by Status</h3><div class="sub">Current pipeline</div>
+    <div class="chart-box sm"><canvas id="chStatus"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>🧾 Expenses by Category</h3><div class="sub">Where trip money goes</div>
+    <div class="chart-box sm"><canvas id="chExp"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>🏆 Vehicle Utilization</h3><div class="sub">Completed trips per vehicle</div>
+    <div class="chart-box sm"><canvas id="chUtil"></canvas></div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>🔔 Alerts &amp; Compliance</h3><div class="sub">Expiring documents, low stock, operational warnings</div>
+    {% for a in live_alerts %}
+    <div class="alert a-{{ a.level }}"><span class="a-ico">{% if a.level == 'critical' %}🔴{% elif a.level == 'warning' %}🟡{% else %}🔵{% endif %}</span><span>{{ a.title }}</span></div>
+    {% endfor %}
+    {% for a in stored_alerts %}
+    <div class="alert a-{{ a.level }}"><span class="a-ico">{% if a.level == 'critical' %}🔴{% elif a.level == 'warning' %}🟡{% else %}🔵{% endif %}</span><span><b>{{ a.title }}</b><br><span style="color:var(--muted)">{{ a.message }}</span></span></div>
+    {% endfor %}
+    {% if not live_alerts and not stored_alerts %}<div style="color:var(--muted)">All clear — no open alerts. ✅</div>{% endif %}
+  </div>
+  <div class="card">
+    <h3>🛣️ Active Trips</h3><div class="sub">Currently planned, dispatched or en route</div>
+    <table class="tbl"><thead><tr><th>Trip</th><th>Route</th><th>Vehicle</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for t in active_trips %}
+      <tr><td style="font-weight:700;color:var(--orange2)">{{ t.trip_no }}</td><td>{{ t.route.name }}</td><td>{{ t.vehicle.plate_no }}</td>
+      <td><span class="badge {% if t.status == 'en_route' %}b-blue{% elif t.status == 'dispatched' %}b-purple{% else %}b-amber{% endif %}">{{ t.get_status_display }}</span></td>
+      <td><a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_detail' company_slug=company.slug entity='trips' pk=t.pk %}">Open →</a></td></tr>
+      {% empty %}<tr><td colspan="5" style="color:var(--muted)">No active trips.</td></tr>{% endfor %}
+    </tbody></table>
+    <div style="margin-top:12px"><a class="btn btn-ghost btn-sm" href="{% url 'fleet_tracking' company_slug=company.slug %}">🛰️ Open Live Tracking</a></div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>📬 Recent Deliveries</h3><div class="sub">Latest delivery orders and proof-of-delivery status</div>
+  <table class="tbl"><thead><tr><th>Order</th><th>Customer</th><th>Destination</th><th>Status</th><th>POD</th></tr></thead>
+  <tbody>
+    {% for d in recent_deliveries %}
+    <tr><td style="font-weight:700">{{ d.order_no }}</td><td>{{ d.customer_name }}</td><td>{{ d.destination }}</td>
+    <td><span class="badge {% if d.status == 'delivered' %}b-green{% elif d.status == 'in_transit' %}b-blue{% elif d.status == 'failed' %}b-red{% else %}b-gray{% endif %}">{{ d.get_status_display }}</span></td>
+    <td style="color:var(--muted)">{% if d.pod_signed_by %}✍️ {{ d.pod_signed_by }}{% else %}—{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5" style="color:var(--muted)">No deliveries yet.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}
+
+{% block foot %}
+<script id="chartdata" type="application/json">{{ charts_json|safe }}</script>
+<script>
+const C = JSON.parse(document.getElementById('chartdata').textContent);
+Chart.defaults.color = '#9aa6b8';
+Chart.defaults.borderColor = 'rgba(43,52,66,.6)';
+const grid = {color: 'rgba(43,52,66,.4)'};
+function line(el, labels, datasets){
+  new Chart(document.getElementById(el), {
+    type: 'line',
+    data: {labels: labels, datasets: datasets},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}}},
+      scales: {x: {grid: grid}, y: {grid: grid, ticks: {callback: function(v){ return ' ' + (v/1000) + 'k'; }}}}
+    }
+  });
+}
+line('chRevenue', C.months, [
+  {label:'Billed', data:C.revenue, borderColor:'#ff7a18', backgroundColor:'rgba(255,122,24,.15)', fill:true, tension:.35},
+  {label:'Collected', data:C.collected, borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.12)', fill:true, tension:.35}]);
+line('chFuel', C.months, [{label:'Fuel cost (ETB)', data:C.fuel, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.15)', fill:true, tension:.35}]);
+new Chart(document.getElementById('chStatus'), {type:'doughnut',
+  data:{labels:C.status.labels, datasets:[{data:C.status.data, backgroundColor:['#f59e0b','#a855f7','#3b82f6','#22c55e','#9aa6b8','#ef4444'], borderWidth:0}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:12}}}}});
+new Chart(document.getElementById('chExp'), {type:'doughnut',
+  data:{labels:C.exp_labels, datasets:[{data:C.exp_data, backgroundColor:['#ff7a18','#3b82f6','#22c55e','#a855f7','#14b8a6','#f59e0b'], borderWidth:0}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:12}}}}});
+new Chart(document.getElementById('chUtil'), {type:'bar',
+  data:{labels:C.util_labels, datasets:[{label:'Trips', data:C.util_data, backgroundColor:'rgba(255,122,24,.75)', borderRadius:6}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid}, y:{grid, beginAtZero:true, ticks:{stepSize:1}}}}});
+</script>
+{% endblock %}

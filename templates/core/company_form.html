@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Register Company — Orbit ERP{% endblock %}
+{% block heading %}Register a Company{% endblock %}
+{% block crumb %}Orbit ERP · Company Hub{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px">
+  <h3>🏢 Company Registration</h3>
+  <div class="sub">Register a client company on the Orbit ERP platform. You will become its <b>Owner</b> with full administrative access, and a dedicated ERP workspace will be created instantly.</div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      {% for f in form %}
+      <div>
+        <label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {% if f.errors %}<div style="color:#f87171;font-size:12px;margin-top:4px">{{ f.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:22px;display:flex;gap:10px">
+      <button class="btn btn-primary" type="submit">Register Company →</button>
+      <a class="btn btn-ghost" href="{% url 'company_hub' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

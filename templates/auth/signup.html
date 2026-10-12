@@ -1,0 +1,16 @@
+{% extends "auth/base_auth.html" %}
+{% block title %}Orbit ERP — Create account{% endblock %}
+{% block box %}
+<h2>Create your account 🚀</h2>
+<div class="sub">One account gives you access to every company workspace you join or register.</div>
+<form method="post">
+  {% csrf_token %}
+  {% for f in form %}
+  <label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>
+  {{ f }}
+  {% if f.errors %}<div style="color:#f87171;font-size:12px;margin-top:4px">{{ f.errors.0 }}</div>{% endif %}
+  {% endfor %}
+  <div style="margin-top:22px"><button class="btn btn-primary" style="width:100%;justify-content:center" type="submit">Create Account →</button></div>
+</form>
+<div style="margin-top:18px;text-align:center;font-size:13.5px;color:var(--muted)">Already have an account? <a href="{% url 'login' %}" style="color:var(--orange2);font-weight:600">Sign in</a></div>
+{% endblock %}

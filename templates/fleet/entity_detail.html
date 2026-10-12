@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ obj }} — {{ cfg.title }}{% endblock %}
+{% block heading %}{{ cfg.icon }} {{ obj }}{% endblock %}
+{% block crumb %}{{ company.name }} · {{ cfg.title }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_list' company_slug=company.slug entity=entity %}">← Back to {{ cfg.title }}</a>
+  {% if membership.can_edit %}
+  <div style="display:flex;gap:8px">
+    <a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_update' company_slug=company.slug entity=entity pk=obj.pk %}">✏️ Edit</a>
+    <a class="btn btn-danger btn-sm" href="{% url 'fleet_entity_delete' company_slug=company.slug entity=entity pk=obj.pk %}">🗑 Delete</a>
+  </div>
+  {% endif %}
+</div>
+<div class="grid2">
+  <div class="card">
+    <h3>Details</h3><div class="sub">{{ cfg.singular }} record</div>
+    {% for k, v in fields %}
+    <div class="dl-row"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
+    {% endfor %}
+  </div>
+  <div>
+    {% for rel in related %}
+    <div class="card">
+      <h3>{{ rel.title }} <span class="badge b-gray">{{ rel.count }}</span></h3>
+      <div class="sub">Linked records</div>
+      {% if rel.rows %}
+      <table class="tbl"><thead><tr>{% for h in rel.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in rel.rows %}<tr>{% for c in row %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+      {% else %}<div style="color:var(--muted);font-size:13px">No linked records.</div>{% endif %}
+    </div>
+    {% endfor %}
+    {% if entity == "invoices" and membership.can_finance %}
+    <div class="card">
+      <h3>💳 Record Payment</h3><div class="sub">Applies to invoice {{ obj.invoice_no }} ({{ obj.total }} ETB)</div>
+      <form method="post" action="{% url 'fleet_invoice_pay' company_slug=company.slug pk=obj.pk %}">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div><label class="lbl">Amount (ETB)</label><input class="input" type="number" step="0.01" name="amount" required></div>
+          <div><label class="lbl">Method</label><select class="input" name="method"><option value="bank">Bank Transfer</option><option value="cash">Cash</option><option value="mobile">Mobile Money</option><option value="cheque">Cheque</option></select></div>
+        </div>
+        <label class="lbl">Reference</label><input class="input" type="text" name="reference" placeholder="Receipt / ref no">
+        <div style="margin-top:14px"><button class="btn btn-primary btn-sm" type="submit">Record Payment</button></div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

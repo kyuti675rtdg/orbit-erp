@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Orbit ERP — Sign in{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-left">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px">
+      <div class="brand-mark" style="width:54px;height:54px;font-size:28px">O</div>
+      <div><div class="brand-name" style="font-size:24px">ORBIT <span>ERP</span></div>
+      <div class="brand-sub">Enterprise Suite</div></div>
+    </div>
+    <h1 style="font-size:34px;line-height:1.25;margin:0 0 12px">One platform.<br>Every company.<br><span style="background:linear-gradient(90deg,var(--orange),var(--orange2));-webkit-background-clip:text;background-clip:text;color:transparent">Total operational control.</span></h1>
+    <p style="color:var(--muted);font-size:14.5px;max-width:440px;line-height:1.7">Transport &amp; fleet, finance, HR and business intelligence — a world-class ERP workspace for each of your companies, ready for real operations.</p>
+    <div class="hero-list">
+      <div><span>🚚</span><span><b>Transport &amp; Fleet</b> — live GPS tracking, dispatch, fuel, maintenance, delivery &amp; POD</span></div>
+      <div><span>💰</span><span><b>Finance</b> — invoicing, receivables, payments, trip settlements</span></div>
+      <div><span>👥</span><span><b>HR &amp; Payroll</b> — drivers, attendance, monthly payroll runs</span></div>
+      <div><span>📊</span><span><b>Reports &amp; BI</b> — utilization, fuel efficiency, profitability analytics</span></div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-box">
+      {% block box %}{% endblock %}
+      <div style="margin-top:26px;text-align:center;color:var(--muted);font-size:12px">Orbit Technology Solution PLC · Turn Ideas Into Reality</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

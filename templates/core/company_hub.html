@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}My Companies — Orbit ERP{% endblock %}
+{% block heading %}My Companies{% endblock %}
+{% block crumb %}Orbit ERP · Company Hub{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div><h3 style="margin:0">Select a workspace</h3><div class="sub" style="color:var(--muted);font-size:13px">Each company gets a dedicated, isolated ERP workspace.</div></div>
+  <a class="btn btn-primary" href="{% url 'company_create' %}">➕ Register New Company</a>
+</div>
+<div class="co-grid">
+  {% for mc in memberships %}
+  <a class="co-card" href="{% url 'workspace' company_slug=mc.company.slug %}">
+    <h3>{{ mc.company.name }}</h3>
+    <div class="meta">{{ mc.company.industry|default:"—" }} · {{ mc.company.city|default:mc.company.country }}</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+      <span class="badge b-orange">{{ mc.get_role_display }}</span>
+      <span class="badge b-gray">{{ mc.company.get_plan_display }}</span>
+    </div>
+    <span class="btn btn-ghost btn-sm">Open Workspace →</span>
+  </a>
+  {% empty %}
+  <div class="card"><div class="empty"><div class="big">🏢</div><b>No companies yet.</b><br>Register your first company to open its ERP workspace.</div></div>
+  {% endfor %}
+  <a class="co-new" href="{% url 'company_create' %}"><div style="font-size:34px">＋</div>Register New Company</a>
+</div>
+{% endblock %}

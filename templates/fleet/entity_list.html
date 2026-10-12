@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ cfg.title }} — {{ company.name }}{% endblock %}
+{% block heading %}{{ cfg.icon }} {{ cfg.title }}{% endblock %}
+{% block crumb %}{{ company.name }} · Transport &amp; Fleet{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <form class="search" method="get">
+    <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search {{ cfg.title|lower }}…">
+    <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+    {% if q %}<a class="btn btn-ghost btn-sm" href="?">Clear</a>{% endif %}
+  </form>
+  {% if membership.can_edit %}
+  <a class="btn btn-primary" href="{% url 'fleet_entity_create' company_slug=company.slug entity=entity %}">＋ New {{ cfg.singular }}</a>
+  {% endif %}
+</div>
+<div class="card" style="padding:6px 20px">
+  <table class="tbl">
+    <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}<th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        {% for c in r.cells %}<td>{{ c }}</td>{% endfor %}
+        <td style="text-align:right;white-space:nowrap"><a class="btn btn-ghost btn-sm" href="{% url 'fleet_entity_detail' company_slug=company.slug entity=entity pk=r.obj.pk %}">View →</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="20"><div class="empty"><div class="big">{{ cfg.icon }}</div>No {{ cfg.title|lower }} found.{% if membership.can_edit %} <a href="{% url 'fleet_entity_create' company_slug=company.slug entity=entity %}" style="color:var(--orange2)">Create the first one →</a>{% endif %}</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if page.paginator.num_pages > 1 %}
+  <div class="pager">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">← Prev</a>{% endif %}
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

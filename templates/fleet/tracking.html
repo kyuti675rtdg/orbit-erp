@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Live Tracking — {{ company.name }}{% endblock %}
+{% block heading %}🛰️ Live Fleet Tracking{% endblock %}
+{% block crumb %}{{ company.name }} · GPS Tracking &amp; Monitoring{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/css/leaflet.css">
+<script src="/static/js/leaflet.js"></script>
+<style>
+.track-legend{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px}
+.pulse{width:12px;height:12px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.7);animation:pulse 1.6s infinite;display:inline-block;margin-right:6px}
+@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div style="display:flex;align-items:center;gap:10px"><span class="pulse"></span><b>{{ trips|length }} vehicles en route</b><span style="color:var(--muted);font-size:12.5px">· auto-refreshes every 20s</span></div>
+  <a class="btn btn-ghost btn-sm" href="{% url 'fleet_dashboard' company_slug=company.slug %}">← Dashboard</a>
+</div>
+<div class="card" style="padding:12px">
+  <div class="map-wrap"><div id="trackmap"></div></div>
+</div>
+<div class="card">
+  <h3>🚚 Vehicles on the Road</h3><div class="sub">Live status from GPS telemetry</div>
+  <table class="tbl"><thead><tr><th>Trip</th><th>Vehicle</th><th>Driver</th><th>Route</th><th>Speed</th><th>Last Update</th><th></th></tr></thead>
+  <tbody id="trackrows"></tbody></table>
+</div>
+{% endblock %}
+{% block foot %}
+<script id="trackdata" type="application/json">{{ tracks_json|safe }}</script>
+<script id="geodata" type="application/json">{{ geofences_json|safe }}</script>
+<script>
+const tracks = JSON.parse(document.getElementById('trackdata').textContent);
+const geofences = JSON.parse(document.getElementById('geodata').textContent);
+const map = L.map('trackmap').setView([9.0, 39.5], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+const markers = {};
+function truckIcon(){ return L.divIcon({html:'<div style="font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))">🚚</div>', iconSize:[30,30], iconAnchor:[15,15]}); }
+tracks.forEach(t => {
+  const mk = L.marker([t.lat, t.lng], {icon: truckIcon()}).addTo(map);
+  mk.bindPopup(`<b>${t.trip_no}</b> · ${t.vehicle}<br>${t.route}<br>Driver: ${t.driver}<br>Speed: ${t.speed} km/h<br>Cargo: ${t.cargo||'—'}`);
+  markers[t.trip_no] = mk;
+  if (t.path && t.path.length > 1) L.polyline(t.path, {color:'#ff7a18', weight:2.5, opacity:.8}).addTo(map);
+});
+geofences.forEach(g => {
+  const col = g.zone_type === 'restricted' ? '#ef4444' : (g.zone_type === 'depot' ? '#22c55e' : '#3b82f6');
+  L.circle([g.latitude, g.longitude], {radius: g.radius_m, color: col, fillOpacity:.12, weight:1.5}).addTo(map)
+    .bindPopup(`<b>${g.name}</b><br>${g.zone_type}`);
+});
+function renderRows(list){
+  const tb = document.getElementById('trackrows');
+  tb.innerHTML = list.map(t => `<tr><td style="font-weight:700;color:var(--orange2)">${t.trip_no}</td><td>${t.vehicle}</td><td>${t.driver}</td><td>${t.route}</td><td>${t.speed} km/h</td><td style="color:var(--muted)">${t.updated}</td><td><button class="btn btn-ghost btn-sm" onclick="focusTrip('${t.trip_no}')">Locate</button></td></tr>`).join('')
+    || '<tr><td colspan="7" style="color:var(--muted)">No vehicles en route right now.</td></tr>';
+}
+function focusTrip(no){ const m = markers[no]; if (m) { map.setView(m.getLatLng(), 10); m.openPopup(); } }
+renderRows(tracks);
+// live animation: glide markers along their paths
+let animT = 0;
+setInterval(() => {
+  animT += 0.02;
+  tracks.forEach(t => {
+    if (!t.path || t.path.length < 2) return;
+    const idx = Math.floor((animT * 2 + t.path.length) % (t.path.length - 1));
+    const a = t.path[idx], b = t.path[idx+1], f = (animT*2) % 1;
+    markers[t.trip_no].setLatLng([a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f]);
+  });
+}, 900);
+// refresh telemetry
+setInterval(async () => {
+  try {
+    const r = await fetch('{% url "fleet_tracking_feed" company_slug=company.slug %}');
+    const j = await r.json();
+    j.tracks.forEach(p => { const mk = markers[p.trip_no]; if (mk) mk.setLatLng([p.lat, p.lng]); });
+  } catch(e){}
+}, 20000);
+</script>
+{% endblock %}
