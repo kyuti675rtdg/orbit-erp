@@ -41,7 +41,7 @@ def backdate(obj, days=None, months=None, dt=None):
 # ------------------------------------------------------------- users
 
 
-def seed_company(co, full=True):
+def seed_company(co, admin, full=True):
     # --------------------------------------------------------- vehicles
     makes = [("Sinotruk", "Howo 371", "trailer", 40), ("Sinotruk", "Howo 336", "truck", 30),
              ("Isuzu", "FSR 700", "truck", 12), ("Isuzu", "NPR 71", "truck", 7),
@@ -341,7 +341,7 @@ def run():
         co = Company.objects.create(slug=slug, **kwargs)
         Membership.objects.get_or_create(user=admin, company=co, defaults={"role": "owner"})
         print("seeding:", co.name)
-        seed_company(co, full=full)
+        seed_company(co, admin, full=full)
     print("DONE")
 
 
