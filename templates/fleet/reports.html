@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% load icons %}
+{% load humanize %}
 {% block title %}Reports & BI — {{ company.name }}{% endblock %}
 {% block heading %}<span class="h-ico">{% icon 'chart' 24 %}</span> Reports &amp; Business Intelligence{% endblock %}
 {% block crumb %}{{ company.name }} · Fleet, Financial &amp; Operational Analytics{% endblock %}
 {% block content %}
 <div class="kpi-grid">
-  <div class="kpi" style="--kc:#22c55e"><div class="k-ico">{% icon 'receipt' 22 %}</div><div class="k-val">{{ total_rev|floatformat:0 }}</div><div class="k-lbl">Trip Revenue (ETB)</div><div class="k-sub">completed trips</div></div>
-  <div class="kpi" style="--kc:#ef4444"><div class="k-ico">{% icon 'wallet' 22 %}</div><div class="k-val">{{ total_cost|floatformat:0 }}</div><div class="k-lbl">Trip Costs (ETB)</div><div class="k-sub">fuel + expenses</div></div>
-  <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">{% icon 'chart' 22 %}</div><div class="k-val">{{ margin|floatformat:0 }}</div><div class="k-lbl">Gross Margin (ETB)</div></div>
+  <div class="kpi" style="--kc:#22c55e"><div class="k-ico">{% icon 'receipt' 22 %}</div><div class="k-val">{{ total_rev|floatformat:0|intcomma }}</div><div class="k-lbl">Trip Revenue (ETB)</div><div class="k-sub">completed trips</div></div>
+  <div class="kpi" style="--kc:#ef4444"><div class="k-ico">{% icon 'wallet' 22 %}</div><div class="k-val">{{ total_cost|floatformat:0|intcomma }}</div><div class="k-lbl">Trip Costs (ETB)</div><div class="k-sub">fuel + expenses</div></div>
+  <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">{% icon 'chart' 22 %}</div><div class="k-val">{{ margin|floatformat:0|intcomma }}</div><div class="k-lbl">Gross Margin (ETB)</div></div>
   <div class="kpi" style="--kc:#a855f7"><div class="k-ico">{% icon 'timer' 22 %}</div><div class="k-val">{{ on_time_pct }}%</div><div class="k-lbl">On-Time Delivery</div><div class="k-sub">{{ delivered_count }} deliveries measured</div></div>
 </div>
 
@@ -20,7 +21,7 @@
     <tr><td style="font-weight:700">{{ r.vehicle }}</td><td>{{ r.type }}</td><td>{{ r.trips }}</td><td>{{ r.km }}</td>
     <td>{{ r.fuel_l|floatformat:0 }}</td>
     <td><span class="badge {% if r.km_per_l >= 3 %}b-green{% elif r.km_per_l >= 2 %}b-amber{% else %}b-red{% endif %}">{{ r.km_per_l }}</span></td>
-    <td>{{ r.fuel_cost|floatformat:0 }}</td><td>{{ r.maint_cost|floatformat:0 }}</td><td><b>{{ r.cost_per_km }}</b></td></tr>
+    <td>{{ r.fuel_cost|floatformat:0|intcomma }}</td><td>{{ r.maint_cost|floatformat:0|intcomma }}</td><td><b>{{ r.cost_per_km }}</b></td></tr>
     {% empty %}<tr><td colspan="9" style="color:var(--muted)">No data yet.</td></tr>{% endfor %}
   </tbody></table>
 </div>
@@ -32,8 +33,8 @@
   <tbody>
     {% for r in profit_rows %}
     <tr><td style="font-weight:700;color:var(--orange2)">{{ r.trip }}</td><td>{{ r.route }}</td><td>{{ r.vehicle }}</td>
-    <td>{{ r.cost|floatformat:0 }}</td><td>{{ r.revenue|floatformat:0 }}</td>
-    <td><span class="badge {% if r.margin >= 0 %}b-green{% else %}b-red{% endif %}">{{ r.margin|floatformat:0 }}</span></td></tr>
+    <td>{{ r.cost|floatformat:0|intcomma }}</td><td>{{ r.revenue|floatformat:0|intcomma }}</td>
+    <td><span class="badge {% if r.margin >= 0 %}b-green{% else %}b-red{% endif %}">{{ r.margin|floatformat:0|intcomma }}</span></td></tr>
     {% empty %}<tr><td colspan="6" style="color:var(--muted)">No completed trips yet.</td></tr>{% endfor %}
   </tbody></table>
 </div>

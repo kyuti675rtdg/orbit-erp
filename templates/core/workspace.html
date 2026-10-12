@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load icons %}
+{% load humanize %}
 {% block title %}{{ company.name }} — Workspace{% endblock %}
 {% block heading %}{{ company.name }}{% endblock %}
 {% block crumb %}ERP Workspace · {{ company.city|default:company.country }}{% endblock %}
@@ -8,7 +9,7 @@
   <div class="kpi" style="--kc:#ff7a18"><div class="k-ico">{% icon 'truck' 22 %}</div><div class="k-val">{{ kpis.vehicles }}</div><div class="k-lbl">Active Vehicles</div></div>
   <div class="kpi" style="--kc:#3b82f6"><div class="k-ico">{% icon 'trips' 22 %}</div><div class="k-val">{{ kpis.active_trips }}</div><div class="k-lbl">Active Trips</div><div class="k-sub">planned · dispatched · en route</div></div>
   <div class="kpi" style="--kc:#22c55e"><div class="k-ico">{% icon 'package' 22 %}</div><div class="k-val">{{ kpis.deliveries_month }}</div><div class="k-lbl">Deliveries This Month</div></div>
-  <div class="kpi" style="--kc:#a855f7"><div class="k-ico">{% icon 'receipt' 22 %}</div><div class="k-val">{{ kpis.receivable|floatformat:0 }}</div><div class="k-lbl">Receivable (ETB)</div><div class="k-sub">open invoices</div></div>
+  <div class="kpi" style="--kc:#a855f7"><div class="k-ico">{% icon 'receipt' 22 %}</div><div class="k-val">{{ kpis.receivable|floatformat:0|intcomma }}</div><div class="k-lbl">Receivable (ETB)</div><div class="k-sub">open invoices</div></div>
 </div>
 
 <h3 style="margin:4px 0 14px">ERP Modules</h3>

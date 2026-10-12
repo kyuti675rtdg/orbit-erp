@@ -57,19 +57,23 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
     </nav>
     <div class="side-foot">Orbit Technology Solution PLC<br>Turn Ideas Into Reality</div>
   </aside>
+  <div class="scrim" onclick="document.body.classList.remove('nav-open')" aria-hidden="true"></div>
 
   <div class="main">
     <header class="topbar">
-      <div>
-        <div class="crumb">{% block crumb %}{% if active_company %}{{ active_company.name }}{% else %}Orbit ERP{% endif %}{% endblock %}</div>
-        <h1>{% block heading %}Dashboard{% endblock %}</h1>
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <button class="menu-btn" type="button" aria-label="Open navigation" onclick="document.body.classList.add('nav-open')">{% icon 'menu' 20 %}</button>
+        <div style="min-width:0">
+          <div class="crumb">{% block crumb %}{% if active_company %}{{ active_company.name }}{% else %}Orbit ERP{% endif %}{% endblock %}</div>
+          <h1>{% block heading %}Dashboard{% endblock %}</h1>
+        </div>
       </div>
       <div class="user-chip">
         <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch light / dark theme" title="Switch light / dark theme">
           <span class="icon-moon">{% icon 'moon' 17 %}</span><span class="icon-sun">{% icon 'sun' 17 %}</span>
         </button>
         <div class="avatar">{{ request.user.username|first|upper }}</div>
-        <div><div style="font-weight:700;font-size:13px">{{ request.user.username }}</div>
+        <div class="u-text"><div style="font-weight:700;font-size:13px">{{ request.user.username }}</div>
         <div style="font-size:11px;color:var(--muted)">{% if active_membership %}{{ active_membership.get_role_display }}{% else %}Member{% endif %}</div></div>
         <form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn-logout" type="submit">Logout</button></form>
       </div>
@@ -90,6 +94,13 @@ function toggleTheme(){
   try { localStorage.setItem('orbit-theme', next); } catch (e) {}
   document.dispatchEvent(new CustomEvent('orbit-theme-change', {detail: {theme: next}}));
 }
+/* mobile navigation drawer */
+document.querySelectorAll('.sidebar .nav a').forEach(function(a){
+  a.addEventListener('click', function(){ document.body.classList.remove('nav-open'); });
+});
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') document.body.classList.remove('nav-open');
+});
 </script>
 </body>
 </html>

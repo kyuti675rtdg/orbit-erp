@@ -48,6 +48,11 @@ def display_value(obj, field_name):
         return "Yes" if val else "No"
     if val in ("", None):
         return "—"
+    from decimal import Decimal
+    if isinstance(val, int):
+        return f"{val:,}"
+    if isinstance(val, Decimal):
+        return f"{val:,}"
     return val
 
 
