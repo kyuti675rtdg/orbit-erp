@@ -301,11 +301,13 @@ def seed_company(co, full=True):
 
 
 
-def run(skip_if_populated=False):
-    """Seed demo companies. When skip_if_populated, never touch a DB that already has companies."""
-    if skip_if_populated and Company.objects.exists():
-        print("companies exist — skipping demo seed")
-        return
+def run():
+    """Seed demo companies.
+
+    Self-healing per company: a demo company is (re)seeded whenever it lacks
+    trip data — this repairs partial seeds from interrupted boots. Companies
+    that already have trips are never touched.
+    """
     admin, _ = User.objects.get_or_create(username="admin", defaults={"is_superuser": True, "is_staff": True, "email": "admin@orbit.et"})
     admin.set_password("Orbit@2026")
     admin.is_superuser = True
@@ -313,32 +315,33 @@ def run(skip_if_populated=False):
     admin.save()
     print("user: admin / Orbit@2026")
 
-    # ------------------------------------------------------------- companies
-    # Wipe demo companies first: delete trips before the company so the
-    # PROTECT relations on Trip (vehicle/driver/route) don't block the cascade.
-    for slug in ("heleph-coffee-group", "abyssinia-freight-lines"):
+    specs = [
+        ("heleph-coffee-group",
+         dict(name="Heleph Coffee Group", industry="Coffee Export & Logistics", country="Ethiopia",
+              city="Addis Ababa", phone="+251 11 557 0000", email="info@helephcoffee.et",
+              tin="0023456789", address="Bole Sub-city, Addis Ababa", plan="enterprise"),
+         True),
+        ("abyssinia-freight-lines",
+         dict(name="Abyssinia Freight Lines", industry="Freight & Transport", country="Ethiopia",
+              city="Modjo", phone="+251 11 448 1122", email="ops@abyssiniafreight.et",
+              address="Modjo Dry Port Area", plan="professional"),
+         False),
+    ]
+    for slug, kwargs, full in specs:
         co = Company.objects.filter(slug=slug).first()
+        if co and Trip.objects.filter(company=co).exists():
+            print(f"{co.name}: already seeded, skipping")
+            continue
         if co:
+            # Partial seed from an interrupted boot — wipe cleanly and reseed.
+            # Delete trips first: Trip PROTECTs vehicle/driver/route.
+            print(f"{co.name}: incomplete data found, reseeding")
             Trip.objects.filter(company=co).delete()
             co.delete()
-
-    heleph = Company.objects.create(
-        name="Heleph Coffee Group", industry="Coffee Export & Logistics", country="Ethiopia",
-        city="Addis Ababa", phone="+251 11 557 0000", email="info@helephcoffee.et",
-        tin="0023456789", address="Bole Sub-city, Addis Ababa", plan="enterprise",
-    )
-    aby = Company.objects.create(
-        name="Abyssinia Freight Lines", industry="Freight & Transport", country="Ethiopia",
-        city="Modjo", phone="+251 11 448 1122", email="ops@abyssiniafreight.et",
-        address="Modjo Dry Port Area", plan="professional",
-    )
-    for co in (heleph, aby):
+        co = Company.objects.create(slug=slug, **kwargs)
         Membership.objects.get_or_create(user=admin, company=co, defaults={"role": "owner"})
-    print("companies:", heleph.name, "|", aby.name)
-
-
-    seed_company(heleph, full=True)
-    seed_company(aby, full=False)
+        print("seeding:", co.name)
+        seed_company(co, full=full)
     print("DONE")
 
 

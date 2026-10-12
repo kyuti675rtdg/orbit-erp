@@ -1,4 +1,4 @@
-"""Seed demo companies + fleet data. Safe for production: skips when companies exist."""
+"""Seed demo companies + fleet data. Safe: only (re)seeds demo companies lacking trip data."""
 from django.core.management.base import BaseCommand
 
 
@@ -7,5 +7,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         import seed
-        seed.run(skip_if_populated=True)
+        seed.run()
         self.stdout.write(self.style.SUCCESS("seed_demo finished"))
