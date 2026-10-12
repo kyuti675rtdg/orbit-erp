@@ -43,6 +43,36 @@ def _parse_database_url(url: str):
 
 
 _db_url = os.environ.get("DATABASE_URL")
+
+
+def _ensure_database():
+    """Create the target Postgres database on first boot if it is missing.
+
+    Render's free tier allows only one database *instance*; Orbit ERP shares
+    the instance with the sibling app and keeps its own logical database.
+    Runs only when DATABASE_URL is set (production); never blocks boot.
+    """
+    if not _db_url:
+        return
+    try:
+        import psycopg
+        from psycopg import sql
+        from urllib.parse import urlunparse
+
+        p = urlparse(_db_url)
+        dbname = (p.path or "").lstrip("/") or "orbiterp"
+        maint_url = urlunparse(p._replace(path="/postgres"))
+        with psycopg.connect(maint_url, autocommit=True, connect_timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (dbname,))
+                if not cur.fetchone():
+                    cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(dbname)))
+    except Exception:
+        pass  # migrate will surface any real connection problem
+
+
+_ensure_database()
+
 DATABASES = {
     "default": _parse_database_url(_db_url)
     if _db_url
