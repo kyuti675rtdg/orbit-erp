@@ -32,7 +32,7 @@
     <div class="oc-empty" id="ocEmpty">
       <div class="oc-empty-ico">{% icon 'chat' 44 %}</div>
       <h3>Orbit Chat</h3>
-      <p>Select a conversation to start messaging.<br>Messages are live — backed by the ERP database.</p>
+      <p>Select a conversation to start messaging.<br>Fast, secure, and tied to your ERP workspace.</p>
     </div>
     <div class="oc-convo hidden" id="ocConvo">
       <header class="oc-chead">
@@ -43,35 +43,50 @@
           <div class="oc-chead-sub" id="ocCSub">—</div>
         </div>
         <div class="oc-chead-actions">
+          <button class="icon-btn" id="ocSearchBtn" title="Search in chat">{% icon 'search' 18 %}</button>
+          <button class="icon-btn" id="ocBellBtn" title="Enable notifications">{% icon 'bell' 18 %}</button>
           <button class="icon-btn" id="ocInfoBtn" title="Members">{% icon 'users' 18 %}</button>
         </div>
       </header>
-      <div class="oc-searchbar hidden" id="ocInChatSearch">
-        <input id="ocInChatQ" placeholder="Search in conversation…">
+      <div class="oc-findbar hidden" id="ocFindBar">
+        <input id="ocFindQ" placeholder="Search in conversation…">
+        <span id="ocFindCount"></span>
+        <button class="icon-btn" id="ocFindUp" title="Previous">{% icon 'up' 16 %}</button>
+        <button class="icon-btn" id="ocFindDown" title="Next">{% icon 'down' 16 %}</button>
+        <button class="icon-btn" id="ocFindX">{% icon 'x' 16 %}</button>
       </div>
       <div class="oc-msgs" id="ocMsgs"></div>
+      <button class="oc-tobottom hidden" id="ocToBottom">{% icon 'down' 18 %}<span id="ocNewCount"></span></button>
+      <div class="oc-typingbar hidden" id="ocTypingBar"><span class="oc-tdots"><i></i><i></i><i></i></span><span id="ocTypingWho"></span></div>
       <div class="oc-replybar hidden" id="ocReplyBar">
-        <div><strong id="ocReplyWho"></strong><span id="ocReplyText"></span></div>
-        <button id="ocReplyX" aria-label="Cancel reply">{% icon 'x' 16 %}</button>
+        <div class="oc-replyinfo"><strong id="ocReplyWho"></strong><span id="ocReplyText"></span></div>
+        <button id="ocReplyX" class="icon-btn" aria-label="Cancel reply">{% icon 'x' 16 %}</button>
+      </div>
+      <div class="oc-filebar hidden" id="ocFileBar">
+        <div class="oc-replyinfo"><strong id="ocFileName"></strong><span id="ocFileSize"></span></div>
+        <button id="ocFileX" class="icon-btn">{% icon 'x' 16 %}</button>
       </div>
       <footer class="oc-composer">
         <label class="icon-btn oc-attach" title="Attach file">
           {% icon 'clip' 20 %}<input type="file" id="ocFile" hidden>
         </label>
-        <input id="ocInput" placeholder="Write a message…" autocomplete="off" maxlength="4000">
+        <textarea id="ocInput" placeholder="Write a message…" rows="1" maxlength="4000"></textarea>
         <button class="oc-send" id="ocSend" aria-label="Send">{% icon 'send' 20 %}</button>
       </footer>
     </div>
   </section>
 
-  <!-- ============ RIGHT: members drawer ============ -->
   <aside class="oc-members hidden" id="ocMembers">
     <div class="oc-m-head"><h4>Members</h4><button id="ocMX" class="icon-btn">{% icon 'x' 18 %}</button></div>
     <div id="ocMemberList"></div>
   </aside>
 </div>
 
-<!-- new group modal -->
+<!-- reaction picker -->
+<div class="oc-reactpick hidden" id="ocReactPick"></div>
+<!-- message context menu -->
+<div class="oc-menu hidden" id="ocMenu"></div>
+
 <div class="oc-modal hidden" id="ocModal">
   <div class="oc-modal-card">
     <h3>New Group Chat</h3>
@@ -90,35 +105,38 @@
 "use strict";
 const SLUG = "{{ company.slug }}";
 const ME = "{{ request.user.username }}";
-const ME_ID = {{ request.user.id }};
 const CAN_DM = {{ is_management|yesno:"true,false" }};
 const BASE = `/c/${SLUG}/chat/api`;
 const $ = id => document.getElementById(id);
 const csrf = (document.querySelector('[name=csrfmiddlewaretoken]')||{}).value || "";
 
-let rooms = [], contacts = [], activeRoom = null, messages = [], lastPoll = null;
-let replyTo = null, pollTimer = null, hbTimer = null, searchMode = false;
+let rooms = [], contacts = [], activeRoom = null, messages = [];
+let lastPoll = null, replyTo = null, pollTimer = null, hbTimer = null;
+let unreadAnchorId = null, typingThrottle = 0, notifOn = false;
+let findMatches = [], findIdx = -1, oldestLoaded = null, loadingMore = false;
+let atBottom = true, pendingNew = 0;
 
 const esc = s => String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const timeFmt = iso => { const d = new Date(iso), now = new Date();
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-  return d.toLocaleDateString([], {day:"numeric", month:"short"}); };
+const dayLabel = iso => { const d = new Date(iso), now = new Date(), y = new Date(now - 864e5);
+  if (d.toDateString() === now.toDateString()) return "Today";
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString([], {day:"numeric", month:"long", year:"numeric"}); };
+const timeFmt = iso => new Date(iso).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+const fullFmt = iso => new Date(iso).toLocaleString([], {day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 
 async function api(path, opts={}) {
   const o = Object.assign({headers:{}}, opts);
-  if (o.body && !(o.body instanceof FormData)) { o.headers["Content-Type"]="application/x-www-form-urlencoded"; }
+  if (o.body && !(o.body instanceof FormData)) o.headers["Content-Type"] = "application/x-www-form-urlencoded";
   if (csrf) o.headers["X-CSRFToken"] = csrf;
   const r = await fetch(BASE + path, o);
   const j = await r.json().catch(()=>({}));
   if (!r.ok) throw new Error(j.error || ("HTTP "+r.status));
   return j;
 }
-const post = (p, data) => {
-  if (data instanceof FormData) return api(p, {method:"POST", body:data});
-  return api(p, {method:"POST", body:new URLSearchParams(data||{})});
-};
+const post = (p, data) => api(p, {method:"POST", body: data instanceof FormData ? data : new URLSearchParams(data||{})});
 
-/* ---------------- rooms list ---------------- */
+/* ================= chat list ================= */
+let typingMap = {};
 function avatarHTML(name, online){
   const dot = online===true ? '<span class="oc-dot on"></span>' : (online===false ? '<span class="oc-dot"></span>' : '');
   return `<div class="oc-avatar">${esc((name||"?")[0].toUpperCase())}${dot}</div>`;
@@ -131,12 +149,15 @@ function renderRooms(){
       (r.last_message && r.last_message.body.toLowerCase().includes(q)))
   .forEach(r => {
     total += r.unread;
+    const typing = (typingMap[r.id]||[]).join(", ");
+    const lastTxt = typing ? `<span class="oc-typing-txt">typing…</span>`
+      : (r.last_message ? esc(r.last_message.sender_name+": "+r.last_message.body).slice(0,60) : "<i>No messages yet</i>");
     const el = document.createElement("div");
     el.className = "oc-room" + (activeRoom && activeRoom.id===r.id ? " active" : "");
     el.innerHTML = avatarHTML(r.name, r.type==="dm" ? r.peer_online : undefined) +
       `<div class="oc-room-t"><div class="oc-room-top"><span class="oc-room-name">${esc(r.name)}</span>`+
       `<span class="oc-room-time">${r.last_message?timeFmt(r.last_message.at):""}</span></div>`+
-      `<div class="oc-room-bot"><span class="oc-room-last">${r.last_message?esc(r.last_message.sender_name+": "+r.last_message.body).slice(0,60):"<i>No messages yet</i>"}</span>`+
+      `<div class="oc-room-bot"><span class="oc-room-last">${lastTxt}</span>`+
       (r.unread?`<span class="oc-badge">${r.unread}</span>`:"") + `</div></div>`;
     el.onclick = () => openRoom(r.id);
     list.appendChild(el);
@@ -144,7 +165,6 @@ function renderRooms(){
   $("ocTotal").textContent = total ? total : "";
   document.title = total ? `(${total}) Orbit Chat` : "Orbit Chat";
 }
-
 function renderContacts(){
   const list = $("ocContactList"); list.innerHTML = "";
   contacts.forEach(c => {
@@ -155,75 +175,150 @@ function renderContacts(){
       `<span class="oc-pres ${c.online?"on":""}">${c.online?"online":"offline"}</span></div>`+
       `<div class="oc-room-bot"><span class="oc-room-last">${esc(c.department||c.role||"")}</span></div></div>`;
     el.onclick = () => startDM(c);
-    if (!CAN_DM) el.style.opacity = .55;
     list.appendChild(el);
   });
 }
-
 async function startDM(c){
   if (!CAN_DM) { alert("Only managers can start new direct messages."); return; }
-  try { const j = await post("/rooms/dm/", {user_id:c.id});
-    await loadRooms(); openRoom(j.room.id);
-  } catch(e){ alert(e.message); }
+  try { const j = await post("/rooms/dm/", {user_id:c.id}); await loadRooms(); openRoom(j.room.id); }
+  catch(e){ alert(e.message); }
 }
 
-/* ---------------- conversation ---------------- */
+/* ================= conversation ================= */
+function ticks(m){
+  if (m.sender_username !== ME) return "";
+  return m.seen_by && m.seen_by.length
+    ? `<span class="oc-tick read" title="Seen by ${esc(m.seen_by.join(", "))}">✓✓</span>`
+    : `<span class="oc-tick" title="Sent">✓</span>`;
+}
+const isImg = url => /\.(png|jpe?g|gif|webp)$/i.test(url||"");
+function msgInner(m){
+  let h = "";
+  if (m.reply_to) h += `<div class="oc-quote" data-jump="${m.reply_to.id}"><strong>${esc(m.reply_to.sender_name)}</strong><span>${esc(m.reply_to.body)}</span></div>`;
+  if (m.record) h += `<div class="oc-record">${esc(m.record.label||"Record")}</div>`;
+  if (m.attachment) h += isImg(m.attachment)
+    ? `<a href="${esc(m.attachment)}" target="_blank"><img class="oc-img" src="${esc(m.attachment)}" loading="lazy" alt="attachment"></a>`
+    : `<a class="oc-file" href="${esc(m.attachment)}" target="_blank">${esc(m.attachment_name||"Attachment")}</a>`;
+  if (m.body) h += `<div class="oc-body">${esc(m.body)}</div>`;
+  return h;
+}
+function msgHTML(m, grouped){
+  const mine = m.sender_username === ME;
+  const cls = "oc-msg" + (mine?" mine":"") + (grouped?" grouped":"");
+  let reacts = "";
+  for (const [k, users] of Object.entries(m.reactions||{}))
+    reacts += `<button class="oc-react${users.includes(ME)?" on":""}" data-mid="${m.id}" data-r="${k}"><i class="ri">${reactIcon(k)}</i>${users.length}</button>`;
+  return `<div class="${cls}" data-mid="${m.id}" title="${fullFmt(m.created_at)}">`+
+    (!mine && !grouped ? `<div class="oc-sender">${esc(m.sender_name)}</div>` : "")+
+    msgInner(m)+
+    `<div class="oc-meta"><span>${timeFmt(m.created_at)}</span>${m.edited?'<span>edited</span>':""}${ticks(m)}</div>`+
+    (reacts?`<div class="oc-reacts">${reacts}</div>`:"")+`</div>`;
+}
+function reactIcon(k){
+  return {like:"{% icon 'thumb' 13 %}", love:"{% icon 'heart' 13 %}", laugh:"{% icon 'smile' 13 %}", wow:"{% icon 'zap' 13 %}", sad:"{% icon 'frown' 13 %}"}[k]||k;
+}
+function renderMessages(){
+  const box = $("ocMsgs"); box.innerHTML = "";
+  let lastDay = "", prev = null;
+  messages.forEach(m => {
+    const day = dayLabel(m.created_at);
+    if (day !== lastDay) { box.insertAdjacentHTML("beforeend", `<div class="oc-day">${day}</div>`); lastDay = day; }
+    if (unreadAnchorId && m.id === unreadAnchorId)
+      box.insertAdjacentHTML("beforeend", `<div class="oc-unreadline"><span>Unread messages</span></div>`);
+    const grouped = prev && prev.sender_username===m.sender_username && !m.reply_to &&
+      (new Date(m.created_at)-new Date(prev.created_at)) < 3e5;
+    box.insertAdjacentHTML("beforeend", msgHTML(m, grouped));
+    prev = m;
+  });
+  if (atBottom) box.scrollTop = box.scrollHeight;
+  applyFindHighlight();
+}
 async function openRoom(id){
   const r = rooms.find(x=>x.id===id); if(!r) return;
-  activeRoom = r; replyTo = null; updateReplyBar();
+  unreadAnchorId = (r.unread && messages.length) ? null : null;
+  activeRoom = r; replyTo = null; updateReplyBar(); oldestLoaded = null;
   $("ocEmpty").classList.add("hidden"); $("ocConvo").classList.remove("hidden");
   if (window.innerWidth < 860) { $("ocSide").classList.add("hiddenm"); $("ocMain").classList.add("showm"); }
   $("ocCName").textContent = r.name;
   $("ocCAvatar").textContent = (r.name||"?")[0].toUpperCase();
-  updateSub();
-  await loadMessages();
-  post(`/rooms/${id}/read/`).then(()=>{ r.unread = 0; renderRooms(); }).catch(()=>{});
-  renderMembers();
+  updateSub(); renderMembers(); hideMenu(); hideReactPick();
+  // capture unread anchor BEFORE marking read
+  const j0 = await api(`/rooms/${r.id}/`);
+  messages = j0.messages;
+  if (r.unread > 0 && messages.length)
+    unreadAnchorId = messages[Math.max(0, messages.length - r.unread)].id;
+  atBottom = true; renderMessages();
+  post(`/rooms/${id}/read/`).then(()=>{ r.unread = 0; unreadAnchorId = null; renderRooms(); }).catch(()=>{});
   history.replaceState(null, "", `/c/${SLUG}/chat/?room=${id}`);
 }
 function updateSub(){
   if(!activeRoom) return;
-  const r = activeRoom;
-  if (r.type === "dm") $("ocCSub").textContent = r.peer_online ? "online" : "offline";
-  else $("ocCSub").textContent = `${r.member_count} member${r.member_count===1?"":"s"}`;
+  const r = activeRoom, t = typingMap[r.id]||[];
+  if (t.length) { $("ocCSub").innerHTML = `<span class="oc-typing-txt">${esc(t.join(", "))} typing…</span>`; return; }
+  $("ocCSub").textContent = r.type==="dm" ? (r.peer_online?"online":"offline")
+    : `${r.member_count} member${r.member_count===1?"":"s"}`;
 }
 function updateReplyBar(){
   const bar = $("ocReplyBar");
   if (replyTo) { bar.classList.remove("hidden");
-    $("ocReplyWho").textContent = replyTo.sender_name + "  ";
-    $("ocReplyText").textContent = (replyTo.body||"[file]").slice(0,80);
+    $("ocReplyWho").textContent = replyTo.sender_name;
+    $("ocReplyText").textContent = (replyTo.body||"[file]").slice(0,90);
   } else bar.classList.add("hidden");
 }
+function updateTypingBar(){
+  const t = activeRoom ? (typingMap[activeRoom.id]||[]) : [];
+  $("ocTypingBar").classList.toggle("hidden", !t.length);
+  if (t.length) $("ocTypingWho").textContent = t.join(", ") + (t.length===1?" is":" are") + " typing…";
+  updateSub();
+}
 
-const REACT_ICONS = {like:"thumb", love:"heart", laugh:"smile", wow:"zap", sad:"frown"};
-function msgHTML(m){
-  const mine = m.sender_username === ME;
-  let inner = "";
-  if (m.reply_to) inner += `<div class="oc-quote"><strong>${esc(m.reply_to.sender_name)}</strong><span>${esc(m.reply_to.body)}</span></div>`;
-  if (m.record) inner += `<a class="oc-record" href="/c/${SLUG}/${esc(m.record.link.replace(":", "/"))}/" target="_blank">${esc(m.record.label||"Record")}</a>`;
-  if (m.attachment) inner += `<a class="oc-file" href="${esc(m.attachment)}" target="_blank">${esc(m.attachment_name||"Attachment")}</a>`;
-  if (m.body) inner += `<div class="oc-body">${esc(m.body)}</div>`;
-  let reacts = "";
-  for (const [k, users] of Object.entries(m.reactions||{})) {
-    const on = users.includes(ME) ? " on" : "";
-    reacts += `<button class="oc-react${on}" data-mid="${m.id}" data-r="${k}">${k} ${users.length}</button>`;
-  }
-  const seen = m.seen_by && m.seen_by.length ? `<span class="oc-seen" title="Seen by ${esc(m.seen_by.join(", "))}">✓✓</span>` : "";
-  return `<div class="oc-msg ${mine?"mine":""}" data-mid="${m.id}">
-    ${mine?"":`<div class="oc-sender">${esc(m.sender_name)}</div>`}${inner}
-    <div class="oc-meta"><span>${timeFmt(m.created_at)}</span>${m.edited?'<span>edited</span>':""}${mine?seen:""}
-    <span class="oc-acts"><button data-act="reply">Reply</button><button data-act="react">React</button>${mine?'<button data-act="del">Delete</button>':""}</span></div>
-    ${reacts?`<div class="oc-reacts">${reacts}</div>`:""}</div>`;
+/* ---- message actions: context menu + reaction picker ---- */
+function hideMenu(){ $("ocMenu").classList.add("hidden"); }
+function hideReactPick(){ $("ocReactPick").classList.add("hidden"); }
+function showMenu(x, y, m){
+  const menu = $("ocMenu"), mine = m.sender_username===ME;
+  menu.innerHTML =
+    `<button data-a="reply">Reply</button>`+
+    `<button data-a="copy">Copy text</button>`+
+    (mine||activeRoom.is_admin?`<button data-a="del" class="danger">Delete</button>`:"");
+  menu.classList.remove("hidden");
+  const mw = 170, mh = menu.children.length*38+8;
+  menu.style.left = Math.min(x, innerWidth-mw-8)+"px";
+  menu.style.top = Math.min(y, innerHeight-mh-8)+"px";
+  menu.onclick = async e => {
+    const a = e.target.dataset.a; hideMenu(); if(!a) return;
+    if (a==="reply") { replyTo = m; updateReplyBar(); $("ocInput").focus(); }
+    else if (a==="copy" && m.body) { try{ await navigator.clipboard.writeText(m.body); }catch(_){} }
+    else if (a==="del" && confirm("Delete this message?")) {
+      await post(`/messages/${m.id}/delete/`);
+      messages = messages.filter(x=>x.id!==m.id); renderMessages();
+    }
+  };
 }
-function renderMessages(){
-  const box = $("ocMsgs"); box.innerHTML = "";
-  messages.forEach(m => box.insertAdjacentHTML("beforeend", msgHTML(m)));
-  box.scrollTop = box.scrollHeight;
+function showReactPick(x, y, m){
+  const pick = $("ocReactPick");
+  pick.innerHTML = ["like","love","laugh","wow","sad"].map(k =>
+    `<button data-r="${k}" class="${(m.reactions[k]||[]).includes(ME)?"on":""}" title="${k}">${reactIcon(k)}</button>`).join("");
+  pick.classList.remove("hidden");
+  pick.style.left = Math.min(x, innerWidth-230)+"px";
+  pick.style.top = Math.max(8, y-52)+"px";
+  pick.onclick = async e => {
+    const b = e.target.closest("button"); if(!b) return;
+    hideReactPick();
+    const j = await post(`/messages/${m.id}/react/`, {reaction:b.dataset.r});
+    const i = messages.findIndex(x=>x.id===j.message.id);
+    if (i>=0) { messages[i] = j.message; renderMessages(); }
+  };
 }
-async function loadMessages(){
-  if(!activeRoom) return;
-  const j = await api(`/rooms/${activeRoom.id}/`);
-  messages = j.messages; renderMessages();
+
+/* ---- composer ---- */
+function autosize(){ const t = $("ocInput"); t.style.height="auto"; t.style.height = Math.min(120, t.scrollHeight)+"px"; }
+function updateFileBar(){
+  const f = $("ocFile").files[0], bar = $("ocFileBar");
+  if (f) { bar.classList.remove("hidden");
+    $("ocFileName").textContent = f.name;
+    $("ocFileSize").textContent = (f.size/1024).toFixed(0)+" KB";
+  } else bar.classList.add("hidden");
 }
 async function sendMsg(){
   const body = $("ocInput").value.trim(), file = $("ocFile").files[0];
@@ -232,68 +327,191 @@ async function sendMsg(){
   fd.append("body", body);
   if (replyTo) fd.append("reply_to", replyTo.id);
   if (file) fd.append("file", file);
-  $("ocInput").value = ""; $("ocFile").value = ""; replyTo = null; updateReplyBar();
+  $("ocInput").value=""; autosize(); $("ocFile").value=""; updateFileBar();
+  replyTo = null; updateReplyBar();
   try { const j = await post(`/rooms/${activeRoom.id}/send/`, fd);
-    messages.push(j.message); renderMessages();
-    activeRoom.updated_at = j.message.created_at; loadRooms(true);
+    messages.push(j.message); atBottom = true; pendingNew = 0; updateToBottom();
+    renderMessages(); loadRooms(true);
   } catch(e){ alert(e.message); }
 }
 
-/* ---------------- polling ---------------- */
+/* ---- load more (scroll top) ---- */
+async function maybeLoadMore(){
+  const box = $("ocMsgs");
+  if (box.scrollTop > 60 || loadingMore || !activeRoom || !messages.length) return;
+  loadingMore = true;
+  const oldest = messages[0].id;
+  try {
+    const j = await api(`/rooms/${activeRoom.id}/?before=${oldest}`);
+    if (j.messages.length) {
+      const h0 = box.scrollHeight;
+      messages = j.messages.concat(messages);
+      renderMessages();
+      box.scrollTop = box.scrollHeight - h0;
+    }
+  } catch(e){} finally { loadingMore = false; }
+}
+
+/* ---- in-chat find ---- */
+function applyFindHighlight(){
+  document.querySelectorAll(".oc-msg .hl").forEach(el=>{
+    el.outerHTML = esc(el.textContent);
+  });
+  findMatches = []; findIdx = -1; $("ocFindCount").textContent = "";
+  const q = $("ocFindQ").value.trim().toLowerCase();
+  if (!q || !activeRoom) return;
+  document.querySelectorAll(".oc-msg").forEach(el => {
+    const body = el.querySelector(".oc-body");
+    if (body && body.textContent.toLowerCase().includes(q)) findMatches.push(el);
+  });
+  if (findMatches.length) { findIdx = 0; highlightFind(); }
+}
+function highlightFind(){
+  document.querySelectorAll(".oc-msg.cur-find").forEach(el=>el.classList.remove("cur-find"));
+  if (findIdx < 0) return;
+  const el = findMatches[findIdx];
+  el.classList.add("cur-find");
+  el.scrollIntoView({block:"center"});
+  $("ocFindCount").textContent = `${findIdx+1} / ${findMatches.length}`;
+}
+function findStep(d){
+  if (!findMatches.length) return;
+  findIdx = (findIdx + d + findMatches.length) % findMatches.length;
+  highlightFind();
+}
+
+/* ---- polling ---- */
+function updateToBottom(){
+  const show = !atBottom;
+  $("ocToBottom").classList.toggle("hidden", !show);
+  $("ocNewCount").textContent = pendingNew ? pendingNew : "";
+}
 async function poll(){
   try {
     const j = await api(`/updates/?since=${encodeURIComponent(lastPoll||new Date(Date.now()-30000).toISOString())}`);
     lastPoll = j.now;
-    let touched = false;
+    typingMap = j.typing || {};
+    let newHere = 0;
     (j.messages||[]).forEach(m => {
       if (activeRoom && m.room === activeRoom.id && !messages.find(x=>x.id===m.id)) {
-        messages.push(m); touched = true;
-        post(`/rooms/${activeRoom.id}/read/`).catch(()=>{});
+        messages.push(m); newHere++;
+        if (notifOn && document.hidden && m.sender_username !== ME) {
+          try { new Notification("Orbit Chat — "+activeRoom.name,
+            {body:(m.sender_name+": "+(m.body||"[file]")).slice(0,120)}); } catch(_){}
+        }
       }
     });
-    if (touched) { renderMessages(); }
-    if ((j.messages||[]).length || true) loadRooms(true);
-  } catch(e){ /* transient */ }
+    if (newHere) {
+      if (atBottom) { renderMessages(); post(`/rooms/${activeRoom.id}/read/`).catch(()=>{}); }
+      else { pendingNew += newHere; updateToBottom(); }
+    }
+    updateTypingBar(); renderRooms();
+    if (activeRoom) {
+      const r = rooms.find(x=>x.id===activeRoom.id);
+      if (r) { const po = activeRoom.peer_online; activeRoom = r;
+        if (po !== r.peer_online) updateSub(); }
+    }
+  } catch(e){}
 }
 function startPolling(){
   stopPolling();
   lastPoll = new Date().toISOString();
   pollTimer = setInterval(poll, 3000);
-  hbTimer = setInterval(()=>post("/presence/").catch(()=>{}), 30000);
+  hbTimer = setInterval(()=>post("/presence/", activeRoom?{typing_in:activeRoom.id}:{}).catch(()=>{}), 25000);
   post("/presence/").catch(()=>{});
 }
 function stopPolling(){ clearInterval(pollTimer); clearInterval(hbTimer); }
-
-/* ---------------- members drawer ---------------- */
 function renderMembers(){
   if(!activeRoom) return;
-  const list = $("ocMemberList"); list.innerHTML = "";
-  activeRoom.members.forEach(m => {
-    list.innerHTML += `<div class="oc-mem">${avatarHTML(m.name, m.online)}<span>${esc(m.name)}</span></div>`;
-  });
+  $("ocMemberList").innerHTML = activeRoom.members.map(m =>
+    `<div class="oc-mem">${avatarHTML(m.name, m.online)}<span>${esc(m.name)}</span></div>`).join("");
 }
 
-/* ---------------- init ---------------- */
-async function loadRooms(soft){
+/* ---- init ---- */
+async function loadRooms(){
   const j = await api("/rooms/");
   rooms = j.rooms;
   const ar = "{{ active_room }}";
-  if (ar && !activeRoom) { const r = rooms.find(x=>String(x.id)===ar); if (r) { openRoom(r.id); } }
-  if (activeRoom) { const r = rooms.find(x=>x.id===activeRoom.id); if (r) { activeRoom = r; updateSub(); } }
+  if (ar && !activeRoom) { const r = rooms.find(x=>String(x.id)===ar); if (r) openRoom(r.id); }
+  if (activeRoom) { const r = rooms.find(x=>x.id===activeRoom.id); if (r) activeRoom = r; }
   renderRooms();
 }
 async function loadContacts(){
   const j = await api("/contacts/");
   contacts = j.contacts; renderContacts();
 }
+function notifyTyping(){
+  if (!activeRoom) return;
+  const now = Date.now();
+  if (now - typingThrottle > 4000) {
+    typingThrottle = now;
+    post("/presence/", {typing_in:activeRoom.id}).catch(()=>{});
+  }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const input = $("ocInput");
+  input.addEventListener("input", ()=>{ autosize(); notifyTyping(); });
+  input.addEventListener("keydown", e => {
+    if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+    if (e.key==="Escape") { replyTo=null; updateReplyBar(); hideMenu(); hideReactPick(); }
+  });
   $("ocSend").onclick = sendMsg;
-  $("ocInput").addEventListener("keydown", e => { if (e.key==="Enter") sendMsg(); });
+  $("ocFile").addEventListener("change", updateFileBar);
+  $("ocFileX").onclick = () => { $("ocFile").value=""; updateFileBar(); };
   $("ocReplyX").onclick = () => { replyTo = null; updateReplyBar(); };
-  $("ocBack").onclick = () => { $("ocSide").classList.remove("hiddenm"); $("ocMain").classList.remove("showm"); };
+  $("ocBack").onclick = () => { $("ocSide").classList.remove("hiddenm"); $("ocMain").classList.remove("showm"); activeRoom=null; };
   $("ocInfoBtn").onclick = () => $("ocMembers").classList.toggle("hidden");
   $("ocMX").onclick = () => $("ocMembers").classList.add("hidden");
+  $("ocToBottom").onclick = () => { atBottom=true; pendingNew=0; updateToBottom(); renderMessages(); };
+  const box = $("ocMsgs");
+  box.addEventListener("scroll", () => {
+    atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    if (atBottom) { pendingNew = 0; updateToBottom(); }
+    maybeLoadMore();
+  });
+
+  /* message interactions */
+  let pressTimer = null;
+  box.addEventListener("click", async e => {
+    const rbtn = e.target.closest(".oc-react");
+    if (rbtn) {
+      const m = messages.find(x=>String(x.id)===rbtn.dataset.mid);
+      const j = await post(`/messages/${m.id}/react/`, {reaction:rbtn.dataset.r});
+      const i = messages.findIndex(x=>x.id===j.message.id);
+      if (i>=0){ messages[i]=j.message; renderMessages(); }
+      return;
+    }
+    const q = e.target.closest(".oc-quote");
+    if (q && q.dataset.jump) {
+      const t = box.querySelector(`[data-mid="${q.dataset.jump}"]`);
+      if (t) { t.scrollIntoView({block:"center"}); t.classList.add("cur-find"); setTimeout(()=>t.classList.remove("cur-find"),1200); }
+      return;
+    }
+    const msg = e.target.closest(".oc-msg");
+    if (!msg) { hideMenu(); hideReactPick(); return; }
+    const m = messages.find(x=>String(x.id)===msg.dataset.mid);
+    if (!m) return;
+    showMenu(e.clientX, e.clientY, m);
+  });
+  box.addEventListener("dblclick", e => {
+    const msg = e.target.closest(".oc-msg"); if(!msg) return;
+    const m = messages.find(x=>String(x.id)===msg.dataset.mid); if(!m) return;
+    const r = msg.getBoundingClientRect();
+    showReactPick(r.left + r.width/2 - 110, r.top, m);
+  });
+  box.addEventListener("contextmenu", e => {
+    const msg = e.target.closest(".oc-msg"); if(!msg) return;
+    e.preventDefault();
+    const m = messages.find(x=>String(x.id)===msg.dataset.mid); if(!m) return;
+    showMenu(e.clientX, e.clientY, m);
+  });
+  document.addEventListener("click", e => {
+    if (!e.target.closest("#ocMenu") && !e.target.closest(".oc-msg")) hideMenu();
+    if (!e.target.closest("#ocReactPick") && !e.target.closest(".oc-react")) hideReactPick();
+  });
+
+  /* tabs + search */
   document.querySelectorAll(".oc-tab").forEach(t => t.onclick = () => {
     document.querySelectorAll(".oc-tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
@@ -302,21 +520,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("ocContactList").classList.toggle("hidden", !c);
   });
   $("ocSearch").addEventListener("input", renderRooms);
-  $("ocMsgs").addEventListener("click", async e => {
-    const btn = e.target.closest("button"); if(!btn) return;
-    const mid = btn.dataset.mid || btn.closest(".oc-msg").dataset.mid;
-    const m = messages.find(x=>String(x.id)===String(mid)); if(!m) return;
-    if (btn.dataset.act === "reply") { replyTo = m; updateReplyBar(); $("ocInput").focus(); }
-    else if (btn.dataset.act === "react") {
-      const r = prompt("React: like, love, laugh, wow, sad", "like");
-      if (r) { const j = await post(`/messages/${mid}/react/`, {reaction:r.trim().toLowerCase()});
-        const i = messages.findIndex(x=>x.id===j.message.id); messages[i]=j.message; renderMessages(); }
-    }
-    else if (btn.dataset.act === "del") { if (confirm("Delete this message?")) {
-      await post(`/messages/${mid}/delete/`); messages = messages.filter(x=>x.id!==m.id); renderMessages(); } }
-    else if (btn.dataset.r) { const j = await post(`/messages/${mid}/react/`, {reaction:btn.dataset.r});
-      const i = messages.findIndex(x=>x.id===j.message.id); messages[i]=j.message; renderMessages(); }
-  });
+
+  /* in-chat find */
+  $("ocSearchBtn").onclick = () => { $("ocFindBar").classList.toggle("hidden"); $("ocFindQ").focus(); };
+  $("ocFindX").onclick = () => { $("ocFindBar").classList.add("hidden"); $("ocFindQ").value=""; applyFindHighlight(); };
+  $("ocFindQ").addEventListener("input", applyFindHighlight);
+  $("ocFindQ").addEventListener("keydown", e => { if(e.key==="Enter") findStep(e.shiftKey?-1:1); });
+  $("ocFindUp").onclick = () => findStep(-1);
+  $("ocFindDown").onclick = () => findStep(1);
+
+  /* notifications opt-in */
+  $("ocBellBtn").onclick = async () => {
+    if (!("Notification" in window)) { alert("Notifications not supported here."); return; }
+    const p = await Notification.requestPermission();
+    notifOn = p === "granted";
+    $("ocBellBtn").style.color = notifOn ? "var(--orange)" : "";
+    if (notifOn) alert("Orbit Chat notifications enabled.");
+  };
+
+  /* new group */
   const ng = $("ocNewGroup");
   if (ng) { ng.onclick = async () => {
     const j = await api("/contacts/"); contacts = j.contacts;
@@ -333,6 +555,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("ocModal").classList.add("hidden"); await loadRooms(); openRoom(j.room.id);
     } catch(e){ alert(e.message); }
   }; }
+
   await loadRooms(); await loadContacts(); startPolling();
 });
 window.addEventListener("beforeunload", stopPolling);
@@ -364,6 +587,7 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-room-last{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .oc-badge{background:linear-gradient(135deg,#ff8c00,#ffb300);color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 6px}
 .oc-pres{font-size:11px;color:var(--muted)} .oc-pres.on{color:#2ecc71}
+.oc-typing-txt{color:var(--orange);font-size:13px}
 .oc-side-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .oc-hint{font-size:11px;color:var(--muted)}
 .oc-main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
@@ -375,34 +599,64 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-chead-t{flex:1;min-width:0}
 .oc-chead-name{font-weight:700;font-size:15px}
 .oc-chead-sub{font-size:12px;color:var(--muted)}
-.oc-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
-.oc-msg{max-width:72%;align-self:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:4px 14px 14px 14px;padding:9px 12px;font-size:14px}
+.oc-chead-actions{display:flex;gap:2px}
+.oc-findbar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.oc-findbar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:7px 13px;color:var(--text);font-size:13px;outline:none}
+#ocFindCount{font-size:12px;color:var(--muted);white-space:nowrap}
+.oc-msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:2px;background:var(--bg)}
+.oc-day{align-self:center;font-size:11.5px;color:var(--muted);background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:3px 12px;margin:8px 0}
+.oc-unreadline{display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--orange);font-size:12px;font-weight:600}
+.oc-unreadline::before,.oc-unreadline::after{content:"";flex:1;height:1px;background:rgba(255,140,0,.4)}
+.oc-msg{max-width:72%;align-self:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:4px 14px 14px 14px;padding:8px 12px;font-size:14px;margin-top:2px;position:relative;cursor:default}
 .oc-msg.mine{align-self:flex-end;background:linear-gradient(135deg,rgba(255,140,0,.22),rgba(255,180,0,.12));border-color:rgba(255,140,0,.25);border-radius:14px 4px 14px 14px}
-.oc-sender{font-size:12px;font-weight:700;color:var(--orange);margin-bottom:3px}
-.oc-body{white-space:pre-wrap;word-break:break-word}
-.oc-quote{border-left:3px solid var(--orange);padding:4px 8px;margin-bottom:6px;background:var(--bg);border-radius:6px;font-size:12px}
+.oc-msg.grouped{margin-top:0}
+.oc-msg.grouped.mine{border-radius:14px 4px 14px 14px}
+.oc-msg.cur-find{outline:2px solid var(--orange);outline-offset:1px}
+.oc-sender{font-size:12px;font-weight:700;color:var(--orange);margin-bottom:2px}
+.oc-body{white-space:pre-wrap;word-break:break-word;line-height:1.45}
+.oc-quote{border-left:3px solid var(--orange);padding:4px 8px;margin-bottom:6px;background:var(--bg);border-radius:6px;font-size:12px;cursor:pointer}
 .oc-quote strong{display:block;font-size:11px;color:var(--orange)}
+.oc-quote span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
 .oc-file{display:inline-block;margin:4px 0;padding:7px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--orange);text-decoration:none}
-.oc-record{display:inline-block;margin:4px 0;padding:5px 10px;background:rgba(255,140,0,.12);border:1px solid rgba(255,140,0,.35);border-radius:8px;font-size:12px;color:var(--orange);text-decoration:none;font-weight:600}
-.oc-meta{display:flex;gap:7px;align-items:center;justify-content:flex-end;font-size:10.5px;color:var(--muted);margin-top:4px}
-.oc-seen{color:#4da3ff;font-weight:700}
-.oc-acts{display:none;gap:4px}
-.oc-msg:hover .oc-acts{display:inline-flex}
-.oc-acts button{background:none;border:none;color:var(--orange);font-size:10.5px;cursor:pointer;padding:0 2px}
+.oc-img{max-width:260px;max-height:200px;border-radius:10px;margin:4px 0;display:block;cursor:pointer}
+.oc-record{display:inline-block;margin:4px 0;padding:5px 10px;background:rgba(255,140,0,.12);border:1px solid rgba(255,140,0,.35);border-radius:8px;font-size:12px;color:var(--orange);font-weight:600}
+.oc-meta{display:flex;gap:6px;align-items:center;justify-content:flex-end;font-size:10.5px;color:var(--muted);margin-top:3px}
+.oc-tick{font-size:11px;letter-spacing:-2px}
+.oc-tick.read{color:#4da3ff}
 .oc-reacts{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
-.oc-react{background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:11px;padding:2px 8px;cursor:pointer;color:var(--text)}
+.oc-react{background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:11px;padding:2px 8px;cursor:pointer;color:var(--text);display:inline-flex;align-items:center;gap:4px}
 .oc-react.on{border-color:var(--orange);color:var(--orange)}
-.oc-replybar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--bg2);border-top:1px solid var(--border);font-size:13px;border-left:3px solid var(--orange)}
-.oc-composer{display:flex;gap:9px;align-items:center;padding:11px 14px;border-top:1px solid var(--border);background:var(--bg2)}
-.oc-composer input[type=text],.oc-composer #ocInput{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:22px;padding:10px 16px;color:var(--text);font-size:14px;outline:none}
+.oc-react .ri{display:inline-flex}
+.oc-replybar,.oc-filebar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--bg2);border-top:1px solid var(--border);font-size:13px;border-left:3px solid var(--orange)}
+.oc-replyinfo strong{display:block;font-size:12px;color:var(--orange)}
+.oc-replyinfo span{color:var(--muted);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.oc-typingbar{display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:12px;color:var(--muted);background:var(--bg)}
+.oc-tdots{display:inline-flex;gap:3px}
+.oc-tdots i{width:6px;height:6px;border-radius:50%;background:var(--orange);animation:ocblink 1.2s infinite}
+.oc-tdots i:nth-child(2){animation-delay:.2s}.oc-tdots i:nth-child(3){animation-delay:.4s}
+@keyframes ocblink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+.oc-composer{display:flex;gap:9px;align-items:flex-end;padding:11px 14px;border-top:1px solid var(--border);background:var(--bg2)}
+.oc-composer textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:10px 16px;color:var(--text);font-size:14px;outline:none;resize:none;line-height:1.4;font-family:inherit}
+.oc-composer textarea:focus{border-color:var(--orange)}
 .oc-send{width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ff8c00,#ffb300);display:flex;align-items:center;justify-content:center;flex:none}
+.oc-send:hover{filter:brightness(1.08)}
 .icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:7px;border-radius:8px;display:inline-flex}
 .icon-btn:hover{color:var(--orange);background:var(--bg)}
-.oc-attach{cursor:pointer}
+.oc-attach{cursor:pointer;align-self:flex-end;margin-bottom:4px}
 .oc-members{width:250px;flex:none;border-left:1px solid var(--border);background:var(--bg2);overflow-y:auto}
 .oc-m-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
 .oc-m-head h4{margin:0}
 .oc-mem{display:flex;gap:10px;align-items:center;padding:9px 14px;font-size:14px}
+.oc-tobottom{position:absolute;right:18px;bottom:150px;width:42px;height:42px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--orange);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:5}
+#ocNewCount{position:absolute;top:-4px;right:-4px;background:linear-gradient(135deg,#ff8c00,#ffb300);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.oc-reactpick{position:fixed;z-index:70;background:var(--card);border:1px solid var(--border);border-radius:24px;padding:6px 10px;display:flex;gap:4px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.oc-reactpick button{background:none;border:none;cursor:pointer;padding:7px;border-radius:50%;color:var(--muted);display:flex}
+.oc-reactpick button:hover{background:var(--bg);color:var(--orange);transform:scale(1.15)}
+.oc-reactpick button.on{color:var(--orange)}
+.oc-menu{position:fixed;z-index:70;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:170px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.oc-menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 12px;font-size:13.5px;color:var(--text);cursor:pointer;border-radius:7px}
+.oc-menu button:hover{background:var(--bg)}
+.oc-menu button.danger{color:#e74c3c}
 .oc-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60}
 .oc-modal-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;width:min(420px,92vw);display:flex;flex-direction:column;gap:10px}
 .oc-modal-card h3{margin:0 0 4px}
@@ -418,6 +672,8 @@ window.addEventListener("beforeunload", stopPolling);
   .oc-back{display:block}
   .oc-msg{max-width:86%}
   .oc-members{position:absolute;right:0;top:0;bottom:0;z-index:6;box-shadow:-8px 0 24px rgba(0,0,0,.3)}
+  .oc-tobottom{bottom:170px}
 }
+@media(prefers-reduced-motion:reduce){ .oc-tdots i{animation:none} }
 </style>
 {% endblock %}

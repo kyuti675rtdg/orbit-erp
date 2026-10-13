@@ -365,9 +365,18 @@ def api_updates(request, company_slug):
     total_unread = 0
     for mem in ChatMember.objects.filter(user=request.user, room_id__in=room_ids):
         total_unread += mem.unread_count()
+    # typing indicators
+    typing = {}
+    for p in ChatPresence.objects.filter(
+            typing_room_id__in=room_ids,
+            typing_at__gte=timezone.now() - timedelta(seconds=6)
+            ).select_related("user", "typing_room").exclude(user=request.user):
+        typing.setdefault(p.typing_room_id, []).append(
+            p.user.get_full_name() or p.user.username)
     return JsonResponse({
         "messages": msgs,
         "total_unread": total_unread,
+        "typing": typing,
         "now": timezone.now().isoformat(),
     })
 
@@ -375,8 +384,18 @@ def api_updates(request, company_slug):
 @company_access_required
 @require_POST
 def api_heartbeat(request, company_slug):
-    ChatPresence.objects.update_or_create(
-        user=request.user, defaults={"last_seen": timezone.now()})
+    room_id = request.POST.get("typing_in")
+    vals = {"last_seen": timezone.now()}
+    if room_id:
+        try:
+            rid = int(room_id)
+            if ChatRoom.objects.filter(pk=rid, company=request.company,
+                                       is_archived=False).exists():
+                vals["typing_room_id"] = rid
+                vals["typing_at"] = timezone.now()
+        except (ValueError, TypeError):
+            pass
+    ChatPresence.objects.update_or_create(user=request.user, defaults=vals)
     return JsonResponse({"ok": True})
 
 

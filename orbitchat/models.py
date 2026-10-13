@@ -144,6 +144,13 @@ class ChatPresence(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                 related_name="chat_presence")
     last_seen = models.DateTimeField(default=timezone.now)
+    typing_room = models.ForeignKey(ChatRoom, on_delete=models.SET_NULL,
+                                    null=True, blank=True)
+    typing_at = models.DateTimeField(null=True, blank=True)
 
     def is_online(self):
         return (timezone.now() - self.last_seen).total_seconds() < 120
+
+    def is_typing_in(self, room_id):
+        return (self.typing_room_id == room_id and self.typing_at
+                and (timezone.now() - self.typing_at).total_seconds() < 6)
