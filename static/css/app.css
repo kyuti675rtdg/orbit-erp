@@ -482,3 +482,6 @@ a:focus-visible, button:focus-visible, select:focus-visible, .theme-toggle:focus
 .nav-badge { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 10px; background: #ef4444;
   color: #fff; font-size: 10.5px; font-weight: 700; display: inline-flex;
   align-items: center; justify-content: center; flex-shrink: 0; }
+.offline-bar{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#7c2d12;color:#fff;
+  font-size:13px;font-weight:600;text-align:center;padding:10px 14px}
+.offline-bar[hidden]{display:none}

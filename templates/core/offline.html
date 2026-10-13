@@ -10,6 +10,14 @@
 .off-ico{width:84px;height:84px;margin:0 auto 18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,rgba(255,140,0,.18),rgba(255,180,0,.08));color:var(--orange);font-size:34px;font-weight:800}
 </style>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#ff8c00">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orbit ERP">
+<link rel="apple-touch-icon" href="/static/pwa/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/pwa/icon-192.png">
 </head>
 <body>
 <div class="off"><div class="off-card">
@@ -18,5 +26,12 @@
   <p style="color:var(--muted)">Orbit ERP needs an internet connection for live data. Check your connection and try again.</p>
   <button class="btn btn-primary" onclick="location.reload()">Retry</button>
 </div></div>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(function(){});
+  });
+}
+</script>
 </body>
 </html>

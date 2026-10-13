@@ -10,7 +10,9 @@ const SHELL = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) =>
+      Promise.allSettled(SHELL.map((u) => c.add(u).catch(() => null)))
+    ).then(() => self.skipWaiting())
   );
 });
 

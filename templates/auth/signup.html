@@ -57,6 +57,14 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
 }
 @media(prefers-reduced-motion:reduce){.lx-card{animation:none}}
 </style>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#ff8c00">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orbit ERP">
+<link rel="apple-touch-icon" href="/static/pwa/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/pwa/icon-192.png">
 </head>
 <body>
 <button class="theme-toggle" type="button" onclick="(function(){var n=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';if(n==='dark')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('orbit-theme',n);}catch(e){}})()" aria-label="Switch light / dark theme" title="Switch light / dark theme" style="position:fixed;top:18px;right:18px;z-index:50">
@@ -102,5 +110,12 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
     </div>
   </div>
 </div>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(function(){});
+  });
+}
+</script>
 </body>
 </html>
