@@ -18,11 +18,13 @@ from django.utils import timezone
 
 from core.models import Company, Membership
 from fleet.models import (
-    Alert, Attendance, DeliveryOrder, DispatchOrder, Driver, DriverAdvance,
-    DriverDocument, Employee, FuelLog, Geofence, GPSPing, Inspection, Invoice,
-    PartIssue, Payment, Payroll, Route, ServiceRecord, SparePart, Trip,
+    Alert, DeliveryOrder, DispatchOrder, Driver, DriverAdvance,
+    DriverDocument, FuelLog, Geofence, GPSPing, Inspection, Invoice,
+    PartIssue, Payment, Route, ServiceRecord, SparePart, Trip,
     TripExpense, Vehicle, VehicleDocument, WorkshopJob,
 )
+from shared.models import Attendance as SharedAttendance, Employee as SharedEmployee
+from hr.models import Payslip
 from fleet.utils import CITY_COORDS, interpolate_points
 
 random.seed(20261013)
@@ -272,25 +274,28 @@ def seed_company(co, admin, full=True):
     # employees / HR
     employees = []
     for drv in drivers:
-        employees.append(Employee.objects.create(company=co, name=drv.name, role="Driver",
-                                                 phone=drv.phone, salary_monthly=ETB(str(random.randint(12000, 20000))),
-                                                 driver=drv))
+        emp = SharedEmployee.objects.create(company=co, name=drv.name, position="Driver",
+                                            phone=drv.phone, salary=ETB(str(random.randint(12000, 20000))))
+        drv.shared_employee = emp
+        drv.save(update_fields=["shared_employee"])
+        employees.append(emp)
     for nm, role, sal in [("Hanna Girma", "Dispatcher", 18000), ("Dawit Bekele", "Accountant", 25000),
                           ("Sara Tesfaye", "Fleet Manager", 35000)]:
-        employees.append(Employee.objects.create(company=co, name=nm, role=role,
-                                                 phone=f"+251 9{random.randint(10,99)} 555010",
-                                                 salary_monthly=ETB(str(sal))))
+        employees.append(SharedEmployee.objects.create(company=co, name=nm, position=role,
+                                                       phone=f"+251 9{random.randint(10,99)} 555010",
+                                                       salary=ETB(str(sal))))
     for e in employees:
         for back in range(1, 6):
             d = (now - timedelta(days=back)).date()
             if d.weekday() < 5:
-                Attendance.objects.create(company=co, employee=e, date=d,
-                                          present=random.random() > 0.08, hours=ETB("8"))
+                SharedAttendance.objects.create(company=co, employee=e, date=d,
+                                                status="present" if random.random() > 0.08 else "absent")
     last_month = (now.replace(day=1) - timedelta(days=1)).replace(day=1).date()
     for e in employees:
-        gross = e.salary_monthly
-        Payroll.objects.create(company=co, employee=e, month=last_month, gross=gross,
-                               deductions=(gross * ETB("0.15")).quantize(ETB("0.01")), status="paid")
+        gross = e.salary
+        ded = (gross * ETB("0.15")).quantize(ETB("0.01"))
+        Payslip.objects.create(company=co, employee=e, period=last_month, basic=gross,
+                               deductions=ded, net=gross - ded, status="paid")
     # alerts
     Alert.objects.create(company=co, level="warning", title="2 vehicle insurance policies expire within 30 days",
                          message="Renew before expiry to stay compliant.")
