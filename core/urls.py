@@ -6,6 +6,7 @@ urlpatterns = [
     path("signup/", views.signup, name="signup"),
     path("", views.company_hub, name="company_hub"),
     path("companies/new/", views.company_create, name="company_create"),
+    path("", include("monitoring.urls")),
     # Flow: Login -> Select Company -> Company Dashboard -> Modules -> Submodules
     path("c/<slug:company_slug>/", views.company_dashboard, name="company_dashboard"),
     path("c/<slug:company_slug>/modules/", views.workspace, name="workspace"),

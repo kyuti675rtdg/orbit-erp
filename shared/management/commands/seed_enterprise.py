@@ -121,6 +121,42 @@ def seed_admin(co):
                                   status="scheduled")
 
 
+def backfill_finance_ledger(co):
+    """Post existing sector invoices/bills into the finance ledger.
+
+    Sector seeds create operational invoices directly, bypassing the CRUD
+    post-save hooks that normally post them to Finance. This backfill runs
+    the same idempotent sync functions (AR/AP use source refs, journals use
+    references) so the GL becomes the accurate system of record without
+    duplicating anything already posted.
+    """
+    from core import integrations as integ
+    try:
+        from imports.models import SupplierInvoice
+        for inv in SupplierInvoice.objects.filter(company=co).exclude(status="draft"):
+            integ.sync_supplier_invoice_to_bill(co, inv, True, None)
+    except Exception:
+        pass
+    try:
+        from exports.models import ExportInvoice
+        for inv in ExportInvoice.objects.filter(company=co).exclude(status="draft"):
+            integ.sync_export_invoice_to_ar(co, inv, True, None)
+    except Exception:
+        pass
+    try:
+        from rentals.models import RentInvoice
+        for inv in RentInvoice.objects.filter(company=co):
+            integ.sync_rent_invoice_to_ar(co, inv, True, None)
+    except Exception:
+        pass
+    try:
+        from fleet.models import Invoice
+        for inv in Invoice.objects.filter(company=co).exclude(status__in=["draft", "cancelled"]):
+            integ.sync_fleet_invoice_to_ar(co, inv, True, None)
+    except Exception:
+        pass
+
+
 def seed_comms(co, admin):
     from comms import models as cm
     if cm.Task.objects.filter(company=co).exists():
@@ -266,5 +302,6 @@ class Command(BaseCommand):
             seed_executive(co)
             seed_requests(co, admin)
             seed_communication(co, admin)
+            backfill_finance_ledger(co)
             n += 1
         self.stdout.write(self.style.SUCCESS(f"enterprise seed ok ({n} companies)"))

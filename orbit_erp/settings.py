@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "req",
     "inbox",
     "communication",
+    "monitoring",
 ]
 
 MIDDLEWARE = [

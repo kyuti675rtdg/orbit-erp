@@ -10,15 +10,20 @@
 </div>
 <div class="co-grid">
   {% for mc in memberships %}
-  <a class="co-card" href="{% url 'company_dashboard' company_slug=mc.company.slug %}">
+  <div class="co-card">
     <h3>{{ mc.company.name }}</h3>
     <div class="meta">{{ mc.company.industry|default:"—" }} · {{ mc.company.city|default:mc.company.country }}</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
       <span class="badge b-orange">{{ mc.get_role_display }}</span>
       <span class="badge b-gray">{{ mc.company.get_plan_display }}</span>
     </div>
-    <span class="btn btn-ghost btn-sm">Open Dashboard <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 14 %}</span></span>
-  </a>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <a class="btn btn-ghost btn-sm" href="{% url 'company_dashboard' company_slug=mc.company.slug %}">Open Dashboard <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 14 %}</span></a>
+      {% if mc.role == "owner" or mc.role == "admin" or mc.role == "manager" %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'monitoring_company' company_slug=mc.company.slug %}">{% icon 'chart' 14 %} Monitor</a>
+      {% endif %}
+    </div>
+  </div>
   {% empty %}
   <div class="card"><div class="empty"><div class="empty-ico">{% icon 'building' 34 %}</div><b>No companies yet.</b><br>Register your first company to open its ERP workspace.</div></div>
   {% endfor %}

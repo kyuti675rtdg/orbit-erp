@@ -14,4 +14,7 @@ def active_company(request):
         "active_company": getattr(request, "company", None),
         "active_membership": getattr(request, "membership", None),
         "my_companies": companies,
+        "is_management": any(
+            m.role in ("owner", "admin", "manager") for m in companies
+        ),
     }

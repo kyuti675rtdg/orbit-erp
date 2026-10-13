@@ -55,8 +55,12 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
           {% endif %}
         {% endfor %}
       {% else %}
-        <a class="snav-link {% if request.resolver_match.url_name == 'company_hub' %}on{% endif %}" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' 19 %}</span><span class="lbl">My Companies</span></a>
-        <a class="snav-link {% if request.resolver_match.url_name == 'company_create' %}on{% endif %}" href="{% url 'company_create' %}"><span class="ico">{% icon 'plus' 19 %}</span><span class="lbl">Register Company</span></a>
+        <div class="snav-section" data-nav>COMPANY LISTING</div>
+        <a class="snav-link {% if request.resolver_match.url_name == 'company_hub' %}on{% endif %}" href="{% url 'company_hub' %}" data-nav><span class="ico">{% icon 'building' 19 %}</span><span class="lbl">My Companies</span></a>
+        {% if is_management %}
+        <a class="snav-link {% if active_nav == 'monitoring' %}on{% endif %}" href="{% url 'monitoring_overview' %}" data-nav><span class="ico">{% icon 'chart' 19 %}</span><span class="lbl">Business Monitoring</span></a>
+        {% endif %}
+        <a class="snav-link {% if request.resolver_match.url_name == 'company_create' %}on{% endif %}" href="{% url 'company_create' %}" data-nav><span class="ico">{% icon 'plus' 19 %}</span><span class="lbl">Register Company</span></a>
       {% endif %}
     </nav>
     {% if sidebar %}

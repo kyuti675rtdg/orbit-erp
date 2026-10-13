@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load icons humanize %}
+{% block title %}Monitoring — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'chart' 24 %}</span> {{ company.name }}{% endblock %}
+{% block crumb %}Orbit ERP · Business Monitoring{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span class="st st-{{ m.status|slugify }}" style="font-size:14px">{{ m.status }}</span>
+    <span style="color:var(--muted);font-size:13px">Health score {{ m.score }}/100 · computed {{ m.computed_at }}</span>
+  </div>
+  <form method="get" action="" style="display:flex;gap:8px" onsubmit="var s=this.s.value; if(s) window.location='/monitoring/'+s+'/'; return false;">
+    <select class="input" name="s" style="max-width:240px" onchange="if(this.value) window.location='/monitoring/'+this.value+'/'">
+      {% for co in siblings %}<option value="{{ co.slug }}" {% if co.slug == company.slug %}selected{% endif %}>{{ co.name }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi" style="--kc:green"><div class="k-ico">{% icon 'cash' 22 %}</div>
+    <div class="k-val">{{ m.revenue_ytd|floatformat:0|intcomma }}</div><div class="k-lbl">Revenue (YTD)</div></div>
+  <div class="kpi" style="--kc:orange"><div class="k-ico">{% icon 'card' 22 %}</div>
+    <div class="k-val">{{ m.expenses_ytd|floatformat:0|intcomma }}</div><div class="k-lbl">Expenses (YTD)</div></div>
+  <div class="kpi" style="--kc:blue"><div class="k-ico">{% icon 'chart' 22 %}</div>
+    <div class="k-val">{{ m.profit_ytd|floatformat:0|intcomma }}</div><div class="k-lbl">Profit (YTD · {{ m.margin|floatformat:1 }}% margin)</div></div>
+  <div class="kpi" style="--kc:purple"><div class="k-ico">{% icon 'bank' 22 %}</div>
+    <div class="k-val">{{ m.cash_position|floatformat:0|intcomma }}</div><div class="k-lbl">Cash Position</div>
+    <div class="k-meta"><span class="k-sub2">30-day net flow {{ m.net_flow_30|floatformat:0|intcomma }}</span></div></div>
+  <div class="kpi" style="--kc:#22a06b"><div class="k-ico">{% icon 'check' 22 %}</div>
+    <div class="k-val">{{ m.taxes_paid|floatformat:0|intcomma }}</div><div class="k-lbl">Taxes Paid</div></div>
+  <div class="kpi" style="--kc:#d64545"><div class="k-ico">{% icon 'clock' 22 %}</div>
+    <div class="k-val">{{ m.taxes_outstanding|floatformat:0|intcomma }}</div><div class="k-lbl">Taxes Outstanding</div></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>Revenue vs Expenses — last 6 months</h3>
+    <div class="sub">Live general-ledger totals</div>
+    {% include "monitoring/_bars.html" with series=series chart_max=chart_max %}
+  </div>
+  <div class="card">
+    <h3>Business Status</h3>
+    <div class="sub">Rule-based health assessment from live indicators</div>
+    <div style="display:flex;align-items:center;gap:12px;margin:8px 0">
+      <span class="st st-{{ m.status|slugify }}" style="font-size:15px;padding:6px 16px">{{ m.status }}</span>
+      <strong>{{ m.score }}/100</strong>
+    </div>
+    <ul style="margin:8px 0;padding-left:18px;color:var(--muted)">
+      {% for r in m.reasons %}<li>{{ r }}</li>{% endfor %}
+    </ul>
+    <div class="kv2">
+      <div><span>Receivables outstanding</span><strong>{{ m.receivables|floatformat:0|intcomma }}</strong></div>
+      <div><span>Overdue receivables</span><strong>{{ m.overdue_receivables|floatformat:0|intcomma }}</strong></div>
+      <div><span>Payables outstanding</span><strong>{{ m.payables|floatformat:0|intcomma }}</strong></div>
+      <div><span>Active headcount</span><strong>{{ m.headcount }}</strong></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>Cash Flow — this month</h3>
+    <div class="sub">Bank transactions since the 1st</div>
+    <div class="kv2">
+      <div><span>Cash inflow</span><strong style="color:#22a06b">+{{ m.inflow_30|floatformat:0|intcomma }}</strong></div>
+      <div><span>Cash outflow</span><strong style="color:#d64545">−{{ m.outflow_30|floatformat:0|intcomma }}</strong></div>
+      <div><span>Net flow</span><strong>{{ m.net_flow_30|floatformat:0|intcomma }}</strong></div>
+      <div><span>Total cash position</span><strong>{{ m.cash_position|floatformat:0|intcomma }}</strong></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Tax Returns</h3>
+    <div class="sub">Filed vs paid across tax types</div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Tax</th><th>Period</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in m.tax_returns|slice:":8" %}
+        <tr><td>{{ t.tax.name }}</td><td>{{ t.period_end|default:"—" }}</td>
+          <td>{{ t.tax_due|floatformat:0|intcomma }}</td>
+          <td><span class="st st-{{ t.status }}">{{ t.get_status_display }}</span></td></tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty" style="padding:10px">No tax returns filed yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<div style="margin-top:4px">
+  <a class="btn btn-ghost" href="{% url 'monitoring_overview' %}">← Consolidated view</a>
+  <a class="btn btn-ghost" href="{% url 'company_dashboard' company_slug=company.slug %}">Open {{ company.name }} workspace</a>
+</div>
+
+<style>
+.st{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.st-excellent{background:#d1fae5;color:#065f46}.st-healthy{background:#dbeafe;color:#1d4ed8}
+.st-needs-attention{background:#fef3c7;color:#92400e}.st-at-risk{background:#fee2e2;color:#991b1b}
+.st-paid{background:#d1fae5;color:#065f46}.st-filed{background:#dbeafe;color:#1d4ed8}.st-draft{background:#e8e8e8;color:#555}
+.kv2{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:8px}
+.kv2 span{color:var(--muted);font-size:12px;display:block}
+@media(max-width:860px){.grid2{grid-template-columns:1fr!important}}
+</style>
+{% endblock %}

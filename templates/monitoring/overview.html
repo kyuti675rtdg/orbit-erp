@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load icons humanize %}
+{% block title %}Business Monitoring — Consolidated{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'chart' 24 %}</span> Business Monitoring{% endblock %}
+{% block crumb %}Orbit ERP · Company Listing · Business Monitoring{% endblock %}
+{% block content %}
+<p style="color:var(--muted);margin-top:-8px">Consolidated real-time view across {{ company_count }} companies. All figures computed live from ERP records.</p>
+
+<div class="kpi-grid">
+  <div class="kpi" style="--kc:green"><div class="k-ico">{% icon 'cash' 22 %}</div>
+    <div class="k-val">{{ totals.revenue_ytd|floatformat:0|intcomma }}</div><div class="k-lbl">Total Revenue (YTD)</div></div>
+  <div class="kpi" style="--kc:blue"><div class="k-ico">{% icon 'chart' 22 %}</div>
+    <div class="k-val">{{ totals.profit_ytd|floatformat:0|intcomma }}</div><div class="k-lbl">Total Profit (YTD · {{ totals.margin|floatformat:1 }}%)</div></div>
+  <div class="kpi" style="--kc:orange"><div class="k-ico">{% icon 'card' 22 %}</div>
+    <div class="k-val">{{ totals.expenses_ytd|floatformat:0|intcomma }}</div><div class="k-lbl">Total Expenses (YTD)</div></div>
+  <div class="kpi" style="--kc:purple"><div class="k-ico">{% icon 'bank' 22 %}</div>
+    <div class="k-val">{{ totals.cash_position|floatformat:0|intcomma }}</div><div class="k-lbl">Combined Cash Position</div></div>
+  <div class="kpi" style="--kc:#22a06b"><div class="k-ico">{% icon 'check' 22 %}</div>
+    <div class="k-val">{{ totals.taxes_paid|floatformat:0|intcomma }}</div><div class="k-lbl">Taxes Paid</div></div>
+  <div class="kpi" style="--kc:#d64545"><div class="k-ico">{% icon 'clock' 22 %}</div>
+    <div class="k-val">{{ totals.taxes_outstanding|floatformat:0|intcomma }}</div><div class="k-lbl">Taxes Outstanding</div></div>
+</div>
+
+<div class="card">
+  <h3>Revenue vs Expenses — last 6 months (all companies)</h3>
+  <div class="sub">Live general-ledger totals per month</div>
+  {% include "monitoring/_bars.html" with series=series %}
+</div>
+
+<div class="card" style="padding:6px 20px">
+  <h3 style="padding:14px 0 4px">Company Comparison</h3>
+  <div class="sub">Select a company for its individual monitoring dashboard</div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Company</th><th>Revenue YTD</th><th>Profit YTD</th><th>Margin</th><th>Cash</th><th>Receivables</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for m in per_company %}
+      <tr>
+        <td><strong>{{ m.company.name }}</strong><br><span style="color:var(--muted);font-size:12px">{{ m.company.get_industry_key_display }}</span></td>
+        <td>{{ m.revenue_ytd|floatformat:0|intcomma }}</td>
+        <td>{{ m.profit_ytd|floatformat:0|intcomma }}</td>
+        <td>{{ m.margin|floatformat:1 }}%</td>
+        <td>{{ m.cash_position|floatformat:0|intcomma }}</td>
+        <td>{{ m.receivables|floatformat:0|intcomma }}</td>
+        <td><span class="st st-{{ m.status|slugify }}">{{ m.status }}</span></td>
+        <td style="text-align:right"><a class="btn btn-primary btn-sm" href="{% url 'monitoring_company' company_slug=m.company.slug %}">Monitor</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8"><div class="empty"><div class="empty-ico">{% icon 'building' 34 %}</div>No companies available.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<style>
+.st{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.st-excellent{background:#d1fae5;color:#065f46}.st-healthy{background:#dbeafe;color:#1d4ed8}
+.st-needs-attention{background:#fef3c7;color:#92400e}.st-at-risk{background:#fee2e2;color:#991b1b}
+</style>
+{% endblock %}
