@@ -48,6 +48,12 @@
           <button class="icon-btn" id="ocSearchBtn" title="Search in chat">{% icon 'search' 18 %}</button>
           <button class="icon-btn" id="ocBellBtn" title="Enable notifications">{% icon 'bell' 18 %}</button>
           <button class="icon-btn" id="ocInfoBtn" title="Members">{% icon 'users' 18 %}</button>
+          <button class="icon-btn oc-morebtn" id="ocMoreBtn" title="More actions" aria-label="More actions">{% icon 'dots' 18 %}</button>
+        </div>
+        <div class="oc-hmenu" id="ocHMenu">
+          <button id="ocHMSearch"><span class="ico">{% icon 'search' 17 %}</span>Search in chat</button>
+          <button id="ocHMBell"><span class="ico">{% icon 'bell' 17 %}</span>Message alerts</button>
+          <button id="ocHMShare"><span class="ico">{% icon 'share' 17 %}</span>Share chat</button>
         </div>
       </header>
       <div class="oc-findbar hidden" id="ocFindBar">
@@ -289,12 +295,13 @@ async function openRoom(id){
   atBottom = true; renderMessages();
   post(`/rooms/${id}/read/`).then(()=>{ r.unread = 0; unreadAnchorId = null; renderRooms(); }).catch(()=>{});
   history.pushState({chatRoom: id}, "", `/c/${SLUG}/chat/?room=${id}`);
-  if (window.innerWidth < 860) document.body.classList.add("hide-mtabs");
+  if (window.innerWidth < 860) { document.body.classList.add("hide-mtabs"); document.body.style.overflow = "hidden"; }
 }
 function closeRoom(push){
   $("ocSide").classList.remove("hiddenm"); $("ocMain").classList.remove("showm");
   activeRoom = null;
   document.body.classList.remove("hide-mtabs");
+  document.body.style.overflow = "";
   if (push === true) { try { history.back(); } catch(e){} }
 }
 window.addEventListener("popstate", (e) => {
@@ -308,7 +315,7 @@ async function openRoomSilent(id){
   const r = rooms.find(x=>x.id===id); if(!r) return;
   activeRoom = r;
   $("ocEmpty").classList.add("hidden"); $("ocConvo").classList.remove("hidden");
-  if (window.innerWidth < 860) { $("ocSide").classList.add("hiddenm"); $("ocMain").classList.add("showm"); document.body.classList.add("hide-mtabs"); }
+  if (window.innerWidth < 860) { $("ocSide").classList.add("hiddenm"); $("ocMain").classList.add("showm"); document.body.classList.add("hide-mtabs"); document.body.style.overflow = "hidden"; }
   $("ocCName").textContent = r.name; updateSub(); renderMembers();
   const j0 = await api(`/rooms/${r.id}/`); messages = j0.messages;
   atBottom = true; renderMessages();
@@ -519,6 +526,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key==="Escape") { replyTo=null; updateReplyBar(); hideMenu(); hideReactPick(); }
   });
   $("ocSend").onclick = sendMsg;
+  /* header overflow menu (mobile secondary actions) */
+  $("ocMoreBtn").onclick = (e) => { e.stopPropagation(); $("ocHMenu").classList.toggle("open"); };
+  document.addEventListener("click", (e) => {
+    if (!$("ocHMenu").classList.contains("open")) return;
+    if (!e.target.closest("#ocHMenu") && !e.target.closest("#ocMoreBtn")) $("ocHMenu").classList.remove("open");
+  });
+  $("ocHMSearch").onclick = () => { $("ocHMenu").classList.remove("open"); $("ocSearchBtn").click(); };
+  $("ocHMBell").onclick = () => { $("ocHMenu").classList.remove("open"); $("ocBellBtn").click(); };
+  $("ocHMShare").onclick = () => { $("ocHMenu").classList.remove("open"); $("ocShareBtn").click(); };
   $("ocFile").addEventListener("change", updateFileBar);
   $("ocCamera").addEventListener("change", function(){
     if (this.files[0]) {
@@ -790,16 +806,40 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-modal-actions{display:flex;justify-content:flex-end;gap:8px}
 .hidden{display:none!important}
 @media(max-width:860px){
-  .oc-wrap{height:calc(100vh - 150px)}
+  .oc-wrap{height:calc(100dvh - 150px);min-height:440px}
   .oc-side{width:100%;border-right:none}
   .oc-side.hiddenm{display:none}
   .oc-main{display:none}
-  .oc-main.showm{display:flex;position:absolute;inset:0;background:var(--card);z-index:5}
-  .oc-back{display:block}
+  /* conversation = full-viewport app layer above the ERP topbar */
+  .oc-main.showm{display:flex;position:fixed;inset:0;z-index:1400;background:var(--card)}
+  .oc-convo{height:100dvh;max-height:100dvh;min-height:0}
+  /* compact header: safe-area aware, no truncation */
+  .oc-chead{padding:calc(8px + env(safe-area-inset-top)) 10px 8px;gap:9px;flex:none}
+  .oc-chead .oc-avatar{width:36px;height:36px;font-size:14px}
+  .oc-chead-name{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .oc-chead-sub{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .oc-chead-actions{gap:0;flex:none}
+  .oc-chead-actions .icon-btn{padding:8px}
+  .oc-back{display:block;flex:none;padding:8px}
+  /* secondary actions collapse into the overflow menu */
+  .oc-chead-actions #ocSearchBtn,.oc-chead-actions #ocBellBtn,.oc-chead-actions #ocShareBtn{display:none}
+  .oc-morebtn{display:inline-flex !important}
   .oc-msg{max-width:86%}
+  .oc-msgs{flex:1;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .oc-composer{flex:none;padding:10px 10px calc(10px + env(safe-area-inset-bottom));gap:7px}
+  .oc-composer textarea{font-size:16px;max-height:110px}
   .oc-members{position:absolute;right:0;top:0;bottom:0;z-index:6;box-shadow:-8px 0 24px rgba(0,0,0,.3)}
   .oc-tobottom{bottom:170px}
 }
+.oc-morebtn{display:none}
+.oc-hmenu{position:absolute;top:calc(100% + 4px);right:8px;z-index:20;background:var(--card);
+  border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.4);
+  min-width:200px;padding:6px;display:none}
+.oc-hmenu.open{display:block}
+.oc-hmenu button{display:flex;align-items:center;gap:12px;width:100%;padding:12px;
+  background:none;border:0;color:var(--text);font-size:14.5px;cursor:pointer;border-radius:10px;font-family:inherit}
+.oc-hmenu button:active{background:var(--bg2)}
+.oc-chead{position:relative}
 @media(prefers-reduced-motion:reduce){ .oc-tdots i{animation:none} }
 </style>
 {% endblock %}
