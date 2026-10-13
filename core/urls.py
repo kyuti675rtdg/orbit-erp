@@ -1,13 +1,8 @@
 from django.urls import include, path
 
-from . import diag, views
+from . import views
 
 urlpatterns = [
-    path("diag/migrate/", diag.diag_migrate, name="diag_migrate"),
-    path("diag/status/", diag.diag_status, name="diag_status"),
-    path("diag/fake-hr/", diag.diag_fake_hr, name="diag_fake_hr"),
-    path("diag/drivers/", diag.diag_drivers, name="diag_drivers"),
-    path("diag/repair-fleet-hr/", diag.diag_repair_fleet_hr, name="diag_repair_fleet_hr"),
     path("signup/", views.signup, name="signup"),
     path("", views.company_hub, name="company_hub"),
     path("companies/new/", views.company_create, name="company_create"),
