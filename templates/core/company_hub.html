@@ -1,32 +1,137 @@
 {% extends "base.html" %}
 {% load icons %}
 {% block title %}My Companies — Orbit ERP{% endblock %}
-{% block heading %}My Companies{% endblock %}
-{% block crumb %}Orbit ERP · Company Hub{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'building' 24 %}</span> Company Hub{% endblock %}
+{% block crumb %}Orbit ERP · Select Workspace{% endblock %}
 {% block content %}
-<div class="toolbar">
-  <div><h3 style="margin:0">Select a company</h3><div class="sub" style="color:var(--muted);font-size:13px">Choose a company to open its dashboard.</div></div>
-  <a class="btn btn-primary" href="{% url 'company_create' %}">{% icon 'plus' 16 %} Register New Company</a>
-</div>
-<div class="co-grid">
-  {% for mc in memberships %}
-  <div class="co-card">
-    <h3>{{ mc.company.name }}</h3>
-    <div class="meta">{{ mc.company.industry|default:"—" }} · {{ mc.company.city|default:mc.company.country }}</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
-      <span class="badge b-orange">{{ mc.get_role_display }}</span>
-      <span class="badge b-gray">{{ mc.company.get_plan_display }}</span>
+<!-- hero -->
+<div class="hub-hero">
+  <div class="hub-hero-t">
+    <div class="hub-kicker">Orbit ERP · Multi-company workspace</div>
+    <h2>Welcome back, {{ first_name }}</h2>
+    <p>Select a company to open its dashboard, modules and live business data.</p>
+    <div class="hub-stats">
+      <div class="hub-stat"><b>{{ memberships|length }}</b><span>Companies</span></div>
+      <div class="hub-stat"><b>{{ industries|length }}</b><span>Industries</span></div>
+      <div class="hub-stat"><b>{% icon 'shield' 14 %}</b><span>Role-based access</span></div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <a class="btn btn-ghost btn-sm" href="{% url 'company_dashboard' company_slug=mc.company.slug %}">Open Dashboard <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 14 %}</span></a>
+  </div>
+  <div class="hub-hero-a">
+    <div class="hub-search">{% icon 'search' 16 %}<input id="hubQ" placeholder="Search companies…" autocomplete="off"></div>
+    <a class="btn btn-primary" href="{% url 'company_create' %}">{% icon 'plus' 16 %} Register Company</a>
+  </div>
+</div>
+
+<!-- industry filter -->
+{% if industries|length > 1 %}
+<div class="hub-filters" id="hubFilters">
+  <button class="hub-chip active" data-f="">All</button>
+  {% for ind in industries %}<button class="hub-chip" data-f="{{ ind|lower }}">{{ ind }}</button>{% endfor %}
+</div>
+{% endif %}
+
+<!-- cards -->
+<div class="hub-grid" id="hubGrid">
+  {% for mc in memberships %}
+  <div class="hub-card" data-name="{{ mc.company.name|lower }}" data-ind="{{ mc.company.industry|default:mc.company.get_industry_key_display|lower }}">
+    <div class="hub-card-top">
+      <div class="hub-avatar" style="--h1:{{ mc.company.id|add:18 }};--h2:{{ mc.company.id|add:48 }}">
+        {{ mc.company.name|slice:":1"|upper }}
+      </div>
+      <div class="hub-id">
+        <h3>{{ mc.company.name }}</h3>
+        <div class="hub-meta">{% icon 'pin' 13 %} {{ mc.company.city|default:mc.company.country }}</div>
+      </div>
+      <span class="badge b-orange">{{ mc.get_role_display }}</span>
+    </div>
+    <div class="hub-tags">
+      <span class="hub-tag">{% icon 'briefcase' 13 %} {{ mc.company.industry|default:mc.company.get_industry_key_display }}</span>
+      <span class="hub-tag">{% icon 'users' 13 %} {{ mc.member_count }} member{{ mc.member_count|pluralize }}</span>
+    </div>
+    <div class="hub-card-foot">
+      <a class="btn btn-primary btn-sm" href="{% url 'company_dashboard' company_slug=mc.company.slug %}">Open Dashboard {% icon 'arrow' 14 %}</a>
       {% if mc.role == "owner" or mc.role == "admin" or mc.role == "manager" %}
       <a class="btn btn-ghost btn-sm" href="{% url 'monitoring_company' company_slug=mc.company.slug %}">{% icon 'chart' 14 %} Monitor</a>
       {% endif %}
     </div>
   </div>
   {% empty %}
-  <div class="card"><div class="empty"><div class="empty-ico">{% icon 'building' 34 %}</div><b>No companies yet.</b><br>Register your first company to open its ERP workspace.</div></div>
+  <div class="card hub-empty">
+    <div class="empty"><div class="empty-ico">{% icon 'building' 38 %}</div>
+    <b>No companies yet.</b><br>Register your first company to open its ERP workspace.<br><br>
+    <a class="btn btn-primary" href="{% url 'company_create' %}">{% icon 'plus' 16 %} Register Company</a></div>
+  </div>
   {% endfor %}
-  <a class="co-new" href="{% url 'company_create' %}"><span style="display:inline-flex;color:var(--orange)">{% icon 'plus' 30 %}</span>Register New Company</a>
+  <a class="hub-new" href="{% url 'company_create' %}">
+    <span class="hub-new-ico">{% icon 'plus' 26 %}</span>
+    <b>Register New Company</b><span>Add another business to your workspace</span>
+  </a>
 </div>
+
+<script>
+(function(){
+  const q = document.getElementById("hubQ"), grid = document.getElementById("hubGrid");
+  let f = "";
+  function apply(){
+    const s = q.value.trim().toLowerCase();
+    grid.querySelectorAll(".hub-card").forEach(c => {
+      const ok = (!s || c.dataset.name.includes(s)) && (!f || c.dataset.ind.includes(f));
+      c.style.display = ok ? "" : "none";
+    });
+  }
+  q.addEventListener("input", apply);
+  document.querySelectorAll(".hub-chip").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".hub-chip").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); f = b.dataset.f; apply();
+  });
+})();
+</script>
+<style>
+.hub-hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;flex-wrap:wrap;
+  background:linear-gradient(135deg,rgba(255,140,0,.10),rgba(255,180,0,.03)),var(--card);
+  border:1px solid var(--border);border-radius:18px;padding:30px 32px;margin-bottom:20px;position:relative;overflow:hidden}
+.hub-hero::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--orange),var(--orange2))}
+.hub-kicker{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--orange);margin-bottom:8px}
+.hub-hero h2{margin:0 0 6px;font-size:26px;letter-spacing:-.01em}
+.hub-hero p{margin:0 0 18px;color:var(--muted);font-size:14px}
+.hub-stats{display:flex;gap:26px}
+.hub-stat b{display:flex;align-items:center;gap:6px;font-size:21px}
+.hub-stat span{font-size:11.5px;color:var(--muted)}
+.hub-hero-a{display:flex;flex-direction:column;gap:12px;min-width:280px}
+.hub-search{display:flex;align-items:center;gap:9px;background:var(--bg);border:1px solid var(--border);
+  border-radius:22px;padding:10px 16px;color:var(--muted)}
+.hub-search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:14px}
+.hub-search:focus-within{border-color:var(--orange)}
+.hub-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.hub-chip{border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;
+  padding:7px 15px;border-radius:18px;cursor:pointer}
+.hub-chip.active{background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border-color:transparent}
+.hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.hub-card{background:linear-gradient(180deg,var(--card),var(--card-b));border:1px solid var(--border);
+  border-radius:16px;padding:22px;position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s}
+.hub-card:hover{transform:translateY(-4px);border-color:rgba(255,140,0,.5);box-shadow:0 18px 44px rgba(0,0,0,.4)}
+.hub-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--orange),var(--orange2));opacity:0;transition:opacity .18s}
+.hub-card:hover::before{opacity:1}
+.hub-card-top{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.hub-avatar{width:54px;height:54px;border-radius:15px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:22px;color:#fff;
+  background:linear-gradient(135deg,hsl(var(--h1,20),85%,52%),hsl(var(--h2,40),90%,48%));
+  box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.hub-id{flex:1;min-width:0}
+.hub-id h3{margin:0 0 4px;font-size:16.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-meta{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12.5px}
+.hub-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.hub-tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
+  background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:5px 11px}
+.hub-card-foot{display:flex;gap:8px;flex-wrap:wrap}
+.hub-card-foot .btn-primary{flex:1;justify-content:center}
+.hub-new{border:2px dashed var(--border);border-radius:16px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:6px;min-height:210px;color:var(--muted);text-decoration:none;transition:all .18s}
+.hub-new:hover{border-color:var(--orange);color:var(--orange)}
+.hub-new-ico{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,140,0,.1);color:var(--orange)}
+.hub-new b{font-size:15px}.hub-new span{font-size:12.5px}
+.hub-empty{grid-column:1/-1}
+@media(max-width:640px){.hub-hero{padding:22px}.hub-hero-a{width:100%}.hub-grid{grid-template-columns:1fr}}
+</style>
 {% endblock %}

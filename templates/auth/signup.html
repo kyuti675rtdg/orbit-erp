@@ -9,20 +9,70 @@
 <script>
 try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t === 'dark') document.documentElement.setAttribute('data-theme', __t); } catch (e) {}
 </script>
+<style>
+.lx-stage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px 22px;
+  background:
+    radial-gradient(900px 480px at 12% 8%, rgba(255,140,0,.10), transparent 60%),
+    radial-gradient(800px 500px at 88% 92%, rgba(255,180,0,.08), transparent 60%),
+    var(--bg);}
+.lx-card{display:grid;grid-template-columns:1.05fr 1fr;width:100%;max-width:1080px;min-height:640px;
+  background:var(--card);border:1px solid var(--border);border-radius:22px;overflow:hidden;
+  box-shadow:0 30px 90px rgba(0,0,0,.5);animation:lxIn .5s ease both}
+@keyframes lxIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.lx-form{padding:52px 54px;display:flex;flex-direction:column}
+.lx-brand{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+.lx-mark{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:26px;color:#fff;background:linear-gradient(135deg,#ff8c00,#ffb300);
+  box-shadow:0 10px 26px rgba(255,140,0,.35)}
+.lx-brand-name{font-weight:800;font-size:21px;letter-spacing:.06em}
+.lx-brand-name span{background:linear-gradient(90deg,var(--orange),var(--orange2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lx-brand-sub{font-size:11.5px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:2px}
+.lx-kicker{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--orange);margin-bottom:10px}
+.lx-form h1{font-size:30px;margin:0 0 8px;letter-spacing:-.01em}
+.lx-sub{color:var(--muted);font-size:14.5px;margin-bottom:24px}
+.lx-form .lbl{display:block;font-size:12.5px;font-weight:600;margin:14px 0 7px;color:var(--text)}
+.lx-actions{display:flex;gap:10px;margin-top:26px}
+.lx-actions .btn{flex:1;justify-content:center;padding:12px}
+.lx-terms{margin-top:auto;padding-top:26px;font-size:11.5px;color:var(--muted);line-height:1.7}
+.lx-art{position:relative;overflow:hidden;background:#1a1208;min-height:640px}
+.lx-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.lx-art::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(200deg,rgba(10,6,2,.15) 20%,rgba(10,6,2,.78) 88%)}
+.lx-art-in{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;padding:44px;color:#fff}
+.lx-quote{font-size:21px;line-height:1.5;font-weight:600;max-width:420px;margin-bottom:8px}
+.lx-quote-src{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:26px}
+.lx-feats{display:flex;flex-direction:column;gap:12px}
+.lx-feat{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:13px 16px;backdrop-filter:blur(8px);font-size:13.5px}
+.lx-feat b{display:block;font-size:14px}.lx-feat span{color:rgba(255,255,255,.72);font-size:12.5px}
+.lx-top{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:26px 30px}
+.lx-top .lx-tag{font-size:12px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.85);
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:7px 14px;border-radius:20px;backdrop-filter:blur(6px)}
+@media(max-width:900px){
+  .lx-card{grid-template-columns:1fr;max-width:480px}
+  .lx-art{min-height:280px;order:-1}
+  .lx-art-in{padding:26px}
+  .lx-quote{font-size:17px}
+  .lx-form{padding:36px 30px}
+}
+@media(prefers-reduced-motion:reduce){.lx-card{animation:none}}
+</style>
 </head>
 <body>
 <button class="theme-toggle" type="button" onclick="(function(){var n=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';if(n==='dark')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('orbit-theme',n);}catch(e){}})()" aria-label="Switch light / dark theme" title="Switch light / dark theme" style="position:fixed;top:18px;right:18px;z-index:50">
   <span class="icon-moon">{% icon 'moon' 17 %}</span><span class="icon-sun">{% icon 'sun' 17 %}</span>
 </button>
-<div class="login-stage">
-  <div class="login-card">
-    <div class="login-form">
-      <div class="login-brand">
-        <div class="brand-mark">O</div>
-        <div><div class="brand-name">ORBIT <span>ERP</span></div></div>
+<div class="lx-stage">
+  <div class="lx-card">
+    <div class="lx-form">
+      <div class="lx-brand">
+        <div class="lx-mark">O</div>
+        <div><div class="lx-brand-name">ORBIT <span>ERP</span></div>
+        <div class="lx-brand-sub">Enterprise Suite</div></div>
       </div>
-      <h1>Join Orbit ERP</h1>
-      <div class="login-sub">Create your account to access company workspaces.</div>
+      <div class="lx-kicker">Get started</div>
+      <h1>Create your account</h1>
+      <div class="lx-sub">One account gives you access to every company workspace you join.</div>
       <form method="post">
         {% csrf_token %}
         {% for f in form %}
@@ -30,17 +80,25 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
         {{ f }}
         {% if f.errors %}<div style="color:#f87171;font-size:12px;margin-top:4px">{{ f.errors.0 }}</div>{% endif %}
         {% endfor %}
-        <div class="login-actions" style="margin-top:24px">
+        <div class="lx-actions">
           <button class="btn btn-primary" type="submit">Create account</button>
           <a class="btn btn-ghost" href="{% url 'login' %}">Sign in</a>
         </div>
       </form>
-      <div class="login-terms">By creating an account you agree to our terms and data policy.<br>Orbit Technology Solution PLC · Turn Ideas Into Reality</div>
+      <div class="lx-terms">By creating an account you agree to our terms and data policy.<br>Orbit Technology Solution PLC · Turn Ideas Into Reality</div>
     </div>
-    <div class="login-art">
+    <div class="lx-art">
       <img src="/static/img/login-coffee.jpg" alt="Ripe red coffee cherries on the branch">
-      <div class="login-badge">{% icon 'arrow' 22 %}</div>
-      <div class="login-tag">From cherry to cup — powered by Orbit ERP</div>
+      <div class="lx-top"><span class="lx-tag">ENTERPRISE ERP PLATFORM</span></div>
+      <div class="lx-art-in">
+        <div class="lx-quote">Run transport, finance, HR and analytics from one command center.</div>
+        <div class="lx-quote-src">Everything your business needs, in one suite</div>
+        <div class="lx-feats">
+          <div class="lx-feat"><span style="display:inline-flex;color:#ffb300">{% icon 'truck' 20 %}</span><div><b>Transport &amp; Fleet</b><span>GPS tracking, dispatch, fuel &amp; maintenance</span></div></div>
+          <div class="lx-feat"><span style="display:inline-flex;color:#ffb300">{% icon 'receipt' 20 %}</span><div><b>Finance &amp; Accounting</b><span>Double-entry ledgers, invoicing, payroll</span></div></div>
+          <div class="lx-feat"><span style="display:inline-flex;color:#ffb300">{% icon 'chart' 20 %}</span><div><b>Business Monitoring</b><span>Live KPIs across all your companies</span></div></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

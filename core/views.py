@@ -97,7 +97,24 @@ def company_hub(request):
         .filter(user=request.user, is_active=True, company__is_active=True)
         .order_by("company__name")
     )
-    return render(request, "core/company_hub.html", {"memberships": memberships})
+    company_ids = [m.company_id for m in memberships]
+    member_counts = {}
+    if company_ids:
+        from django.db.models import Count
+        for row in Membership.objects.filter(
+                company_id__in=company_ids, is_active=True
+                ).values("company_id").annotate(n=Count("id")):
+            member_counts[row["company_id"]] = row["n"]
+    industries = sorted({m.company.industry or m.company.get_industry_key_display()
+                         for m in memberships})
+    for m in memberships:
+        m.member_count = member_counts.get(m.company_id, 0)
+    first = request.user.first_name or request.user.username
+    return render(request, "core/company_hub.html", {
+        "memberships": memberships,
+        "industries": industries,
+        "first_name": first,
+    })
 
 
 @login_required
