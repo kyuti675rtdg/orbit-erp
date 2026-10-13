@@ -38,30 +38,23 @@ def _ns(url_name):
     return parts[0] if len(parts) > 1 else url_name
 
 
-def _mark_active(modules, url_name, url_kwargs):
+def _mark_active(items, url_name, url_kwargs):
     entity = (url_kwargs or {}).get("entity")
     uns = _ns(url_name)
-    for mod in modules:
-        if mod.get("flat"):
-            for p in mod.get("pages", []):
-                p["active"] = p["url_name"] == url_name
-            mod["open"] = any(p["active"] for p in mod["pages"])
-            continue
-        mod_open = False
-        for sub in mod["submodules"]:
-            sub_open = False
-            for p in sub["pages"]:
+    for it in items:
+        if it["type"] == "link":
+            it["active"] = it.get("url_name") == url_name
+        elif it["type"] == "group":
+            is_open = False
+            for p in it["pages"]:
                 if p["entity"] and entity:
                     active = _ns(p["url_name"]) == uns and p["entity"] == entity
                 else:
                     active = p["url_name"] == url_name
                 p["active"] = active
-                if active:
-                    sub_open = True
-            sub["open"] = sub_open
-            mod_open = mod_open or sub_open
-        mod["open"] = mod_open
-    return modules
+                is_open = is_open or active
+            it["open"] = is_open
+    return items
 
 
 def attention_counts(company):
@@ -100,65 +93,90 @@ def attention_counts(company):
     return {k: v for k, v in c.items() if v}
 
 
+INDUSTRY_META = {
+    "transport": ("FLEET OPERATIONS", "Fleet Dashboard", "fleet_dashboard"),
+    "import": ("IMPORT OPERATIONS", "Import Dashboard", "imports_dashboard"),
+    "export": ("EXPORT OPERATIONS", "Export Dashboard", "exports_dashboard"),
+    "manufacturing": ("MANUFACTURING", "Manufacturing Dashboard", "manufacturing_dashboard"),
+    "rental": ("PROPERTY RENTAL", "Rental Dashboard", "rentals_dashboard"),
+    "other": ("OPERATIONS", "Overview", "company_dashboard"),
+}
+
+
 def build_sidebar(request):
-    """Full hierarchical sidebar for the request's active company."""
+    """Sidebar nav: flat, reference-style list.
+
+    Structure: Dashboard link -> INDUSTRY section (module dashboard link +
+    expandable submodule groups) -> ENTERPRISE section (shared groups) ->
+    divider -> Switch Company / Sign Out.
+    """
     company = request.company
     key = company.industry_key or "transport"
     counts = attention_counts(company)
-
-    modules = [
-        {
-            "module": "Dashboard", "icon": "dashboard", "flat": True,
-            "pages": [_page("Company Dashboard", "dashboard", "company_dashboard", company)],
-        },
-    ]
+    section_label, dash_label, dash_url = INDUSTRY_META.get(key, INDUSTRY_META["other"])
 
     if key == "transport":
-        from fleet import sidebar as fleet_sb
-        modules.extend(fleet_sb.get_modules(company, counts))
+        from fleet import sidebar as ind_sb
+        ind_modules = ind_sb.get_modules(company, counts)
         from shared import sidebar as shared_sb
-        modules.extend(shared_sb.get_modules(company, counts, include_hr=False, include_finance=False))
+        shared_modules = shared_sb.get_modules(company, counts, include_hr=False, include_finance=False)
     elif key == "import":
-        from imports import sidebar as sb
-        modules.extend(sb.get_modules(company, counts))
+        from imports import sidebar as ind_sb
+        ind_modules = ind_sb.get_modules(company, counts)
         from shared import sidebar as shared_sb
-        modules.extend(shared_sb.get_modules(company, counts))
+        shared_modules = shared_sb.get_modules(company, counts)
     elif key == "export":
-        from exports import sidebar as sb
-        modules.extend(sb.get_modules(company, counts))
+        from exports import sidebar as ind_sb
+        ind_modules = ind_sb.get_modules(company, counts)
         from shared import sidebar as shared_sb
-        modules.extend(shared_sb.get_modules(company, counts))
+        shared_modules = shared_sb.get_modules(company, counts)
     elif key == "manufacturing":
-        from manufacturing import sidebar as sb
-        modules.extend(sb.get_modules(company, counts))
+        from manufacturing import sidebar as ind_sb
+        ind_modules = ind_sb.get_modules(company, counts)
         from shared import sidebar as shared_sb
-        modules.extend(shared_sb.get_modules(company, counts))
+        shared_modules = shared_sb.get_modules(company, counts)
     elif key == "rental":
-        from rentals import sidebar as sb
-        modules.extend(sb.get_modules(company, counts))
+        from rentals import sidebar as ind_sb
+        ind_modules = ind_sb.get_modules(company, counts)
         from shared import sidebar as shared_sb
-        modules.extend(shared_sb.get_modules(company, counts))
+        shared_modules = shared_sb.get_modules(company, counts)
     else:
+        ind_modules, dash_url = [], "company_dashboard"
         from shared import sidebar as shared_sb
-        modules.extend(shared_sb.get_modules(company, counts))
+        shared_modules = shared_sb.get_modules(company, counts)
 
-    # Module Hub link (workspace)
-    modules.append({
-        "module": "Workspace", "icon": "home",
-        "submodules": [{
-            "name": "General",
-            "pages": [
-                _page("Module Hub", "home", "workspace", company),
-                {"label": "All Companies", "icon": "building", "url_name": "company_hub",
-                 "entity": None, "url": reverse("company_hub")},
-            ],
-        }],
-    })
+    items = [
+        {"type": "link", "label": "Dashboard", "icon": "dashboard",
+         "url": reverse("company_dashboard", kwargs={"company_slug": company.slug}),
+         "url_name": "company_dashboard"},
+        {"type": "section", "label": section_label},
+        {"type": "link", "label": dash_label, "icon": "chart",
+         "url": reverse(dash_url, kwargs={"company_slug": company.slug}),
+         "url_name": dash_url},
+    ]
+    # industry submodule groups (skip the single-page "Overview" -> covered by dash link)
+    for mod in ind_modules:
+        for sub in mod.get("submodules", []):
+            if sub["name"] == "Overview" and len(sub["pages"]) <= 1:
+                continue
+            items.append({"type": "group", "name": sub["name"],
+                          "icon": sub.get("icon", "file"),
+                          "badge": sub.get("badge"), "pages": sub["pages"]})
+    items.append({"type": "section", "label": "ENTERPRISE"})
+    for mod in shared_modules:
+        for sub in mod.get("submodules", []):
+            items.append({"type": "group", "name": sub["name"],
+                          "icon": sub.get("icon", "file"),
+                          "badge": sub.get("badge"), "pages": sub["pages"]})
+    items.append({"type": "divider"})
+    items.append({"type": "link", "label": "Switch Company", "icon": "globe",
+                  "url": reverse("company_hub"), "url_name": "company_hub", "bottom": True})
+    items.append({"type": "signout"})
 
     resolver = request.resolver_match
     if resolver:
-        _mark_active(modules, resolver.url_name, resolver.kwargs)
-    return modules
+        _mark_active(items, resolver.url_name, resolver.kwargs)
+    return items
 
 
 __all__ = ["INDUSTRY_LABELS", "build_sidebar", "_page"]

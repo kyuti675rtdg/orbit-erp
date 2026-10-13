@@ -10,29 +10,29 @@ def get_modules(company, counts=None):
     _b = lambda k: (counts or {}).get(k) or None
     return [
         {"module": "Export Operations", "icon": "package", "submodules": [
-            {"name": "Overview", "pages": [
+            {"name": "Overview", "icon": "dashboard", "pages": [
                 _page("Export Dashboard", "dashboard", "exports_dashboard", company),
             ]},
-            {"name": "Customers", "pages": [
+            {"name": "Customers", "icon": "users", "pages": [
                 _ent(company, "Buyers", "users", "buyers"),
                 _ent(company, "Buyer Contacts", "user", "buyer-contacts"),
                 _ent(company, "Export Products", "package", "products"),
             ]},
-            {"name": "Sales", "pages": [
+            {"name": "Sales", "icon": "file", "pages": [
                 _ent(company, "Quotations", "file", "quotations"),
                 _ent(company, "Contracts", "clipboard", "contracts"),
                 _ent(company, "Export Orders", "package", "orders"),
             ]},
-            {"name": "Quality & Documents", "badge": _b("qc"), "pages": [
+            {"name": "Quality & Documents", "icon": "shield", "badge": _b("qc"), "pages": [
                 _ent(company, "Quality Inspections", "shield", "inspections"),
                 _ent(company, "Export Documents", "file", "documents"),
             ]},
-            {"name": "Shipments", "pages": [
+            {"name": "Shipments", "icon": "truck", "pages": [
                 _ent(company, "Shipments", "truck", "shipments"),
                 _ent(company, "Containers", "box", "containers"),
                 _ent(company, "Customs Declarations", "shield", "declarations"),
             ]},
-            {"name": "Finance", "badge": _b("receivables"), "pages": [
+            {"name": "Finance", "icon": "receipt", "badge": _b("receivables"), "pages": [
                 _ent(company, "Export Invoices", "receipt", "invoices"),
                 _ent(company, "Payment Receipts", "bank", "receipts"),
                 _ent(company, "Export Costing", "wallet", "costs"),

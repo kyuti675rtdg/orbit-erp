@@ -10,7 +10,7 @@ def get_modules(company, counts=None):
     _b = lambda k: (counts or {}).get(k) or None
     return [
         {"module": "Manufacturing", "icon": "gear", "submodules": [
-            {"name": "Overview", "pages": [
+            {"name": "Overview", "icon": "dashboard", "pages": [
                 _page("Manufacturing Dashboard", "dashboard", "manufacturing_dashboard", company),
             ]},
             {"name": "Products & BOM", "pages": [
@@ -19,17 +19,17 @@ def get_modules(company, counts=None):
                 _ent(company, "BOM & Recipes", "clipboard", "boms"),
                 _ent(company, "BOM Lines", "pencil", "bom-lines"),
             ]},
-            {"name": "Materials", "badge": _b("lowstock"), "pages": [
+            {"name": "Materials", "icon": "box", "badge": _b("lowstock"), "pages": [
                 _ent(company, "Raw Materials", "box", "raw-materials"),
                 _ent(company, "Material Issues", "package", "material-issues"),
             ]},
-            {"name": "Production", "pages": [
+            {"name": "Production", "icon": "gear", "pages": [
                 _ent(company, "Production Plans", "calendar", "plans"),
                 _ent(company, "Production Orders", "gear", "production-orders"),
                 _ent(company, "Work Centers", "warehouse", "work-centers"),
                 _ent(company, "Machines", "gear", "machines"),
             ]},
-            {"name": "Quality & Inventory", "badge": _b("qc"), "pages": [
+            {"name": "Quality & Inventory", "icon": "shield", "badge": _b("qc"), "pages": [
                 _ent(company, "Quality Checks", "shield", "quality-checks"),
                 _ent(company, "Batches & Lots", "package", "batches"),
                 _ent(company, "Warehouses", "warehouse", "warehouses"),
