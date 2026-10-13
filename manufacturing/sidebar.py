@@ -6,7 +6,8 @@ def _ent(company, label, icon, entity):
     return _page(label, icon, "manufacturing_entity_list", company, {"entity": entity}, entity=entity)
 
 
-def get_modules(company):
+def get_modules(company, counts=None):
+    _b = lambda k: (counts or {}).get(k) or None
     return [
         {"module": "Manufacturing", "icon": "gear", "submodules": [
             {"name": "Overview", "pages": [
@@ -18,7 +19,7 @@ def get_modules(company):
                 _ent(company, "BOM & Recipes", "clipboard", "boms"),
                 _ent(company, "BOM Lines", "pencil", "bom-lines"),
             ]},
-            {"name": "Materials", "pages": [
+            {"name": "Materials", "badge": _b("lowstock"), "pages": [
                 _ent(company, "Raw Materials", "box", "raw-materials"),
                 _ent(company, "Material Issues", "package", "material-issues"),
             ]},
@@ -28,7 +29,7 @@ def get_modules(company):
                 _ent(company, "Work Centers", "warehouse", "work-centers"),
                 _ent(company, "Machines", "gear", "machines"),
             ]},
-            {"name": "Quality & Inventory", "pages": [
+            {"name": "Quality & Inventory", "badge": _b("qc"), "pages": [
                 _ent(company, "Quality Checks", "shield", "quality-checks"),
                 _ent(company, "Batches & Lots", "package", "batches"),
                 _ent(company, "Warehouses", "warehouse", "warehouses"),

@@ -156,6 +156,11 @@ def company_dashboard(request, company_slug):
         rev = [float(Invoice.objects.filter(company=company, issued_date__year=y,
                      issued_date__month=mo).aggregate(t=Sum("total"))["t"] or 0)
                for y, mo, _ in months]
+        rev_delta, rev_dir = D.pct_delta(rev[-1] if len(rev) > 1 else 0,
+                                         rev[-2] if len(rev) > 1 else 0)
+        kpis[3] = D.kpi("Revenue (Mo)", f"{rev[-1] if rev else 0:,.0f}",
+                        "receipt", "#f59e0b", "invoiced this month",
+                        delta=rev_delta, delta_dir=rev_dir, spark=rev)
         line = {"title": "Revenue (6 months)", "subtitle": "Invoiced transport revenue",
                 "labels": [l for _, _, l in months], "label": "Revenue",
                 "data": rev, "color": "#ff7a18"}
@@ -189,12 +194,18 @@ def company_dashboard(request, company_slug):
         ]
     elif key == "import":
         from imports import models as im
+        months = D.last_n_months(6)
+        po_m = [float(im.PurchaseOrder.objects.filter(
+            company=company, order_date__year=y, order_date__month=mo)
+            .aggregate(t=Sum("total_amount"))["t"] or 0) for y, mo, _ in months]
+        po_d, po_dr = D.pct_delta(po_m[-1] if len(po_m) > 1 else 0, po_m[-2] if len(po_m) > 1 else 0)
         kpis = [
             D.kpi("Pending Requests", im.ImportRequest.objects.filter(
                 company=company, status__in=["draft", "submitted"]).count(),
                 "clipboard", "#f59e0b", "needs review"),
-            D.kpi("Open POs", f"{im.PurchaseOrder.objects.filter(company=company).exclude(status__in=['received', 'cancelled']).aggregate(t=Sum('total_amount'))['t'] or 0:,.0f}",
-                  "file", "#3b82f6", "USD value"),
+            D.kpi("PO Value (Mo)", f"{po_m[-1] if po_m else 0:,.0f}",
+                  "file", "#3b82f6", "USD · new orders",
+                  delta=po_d, delta_dir=po_dr, spark=po_m),
             D.kpi("In Transit", im.Shipment.objects.filter(company=company, status="in_transit").count(),
                   "truck", "#22c55e", "shipments"),
             D.kpi("Employees", employees, "users", "#a855f7", "active staff"),
@@ -221,9 +232,15 @@ def company_dashboard(request, company_slug):
         from exports import models as ex
         recv = ex.ExportInvoice.objects.filter(company=company).exclude(status="paid").aggregate(
             a=Sum("amount"), p=Sum("paid_amount"))
+        months = D.last_n_months(6)
+        eo_m = [float(ex.ExportOrder.objects.filter(
+            company=company, order_date__year=y, order_date__month=mo)
+            .aggregate(t=Sum("total_amount"))["t"] or 0) for y, mo, _ in months]
+        eo_d, eo_dr = D.pct_delta(eo_m[-1] if len(eo_m) > 1 else 0, eo_m[-2] if len(eo_m) > 1 else 0)
         kpis = [
-            D.kpi("Open Orders", f"{ex.ExportOrder.objects.filter(company=company).exclude(status__in=['delivered', 'cancelled']).aggregate(t=Sum('total_amount'))['t'] or 0:,.0f}",
-                  "package", "#3b82f6", "USD value"),
+            D.kpi("Order Value (Mo)", f"{eo_m[-1] if eo_m else 0:,.0f}",
+                  "package", "#3b82f6", "USD · new orders",
+                  delta=eo_d, delta_dir=eo_dr, spark=eo_m),
             D.kpi("In Transit", ex.Shipment.objects.filter(company=company, status="in_transit").count(),
                   "truck", "#22c55e", "shipments"),
             D.kpi("Receivables", f"{(recv['a'] or 0) - (recv['p'] or 0):,.0f}",
@@ -288,8 +305,8 @@ def company_dashboard(request, company_slug):
         occ = round(occupied / (units.count() or 1) * 100)
         kpis = [
             D.kpi("Occupancy", f"{occ}%", "building", "#3b82f6", f"{occupied} units"),
-            D.kpi("Overdue Rent", f"{rn.RentSchedule.objects.filter(company=company, status='overdue').aggregate(t=Sum('amount'))['t'] or 0:,.0f}",
-                  "wallet", "#ef4444", "to collect"),
+            D.kpi("Collected (Mo)", f"{float(rn.RentPayment.objects.filter(company=company, payment_date__year=timezone.now().year, payment_date__month=timezone.now().month).aggregate(t=Sum('amount'))['t'] or 0):,.0f}",
+                  "bank", "#22c55e", "rent received"),
             D.kpi("Open Maintenance", rn.MaintenanceRequest.objects.filter(
                 company=company, status__in=["open", "in_progress"]).count(),
                 "wrench", "#f59e0b", "requests"),

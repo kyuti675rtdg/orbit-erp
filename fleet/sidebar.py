@@ -6,16 +6,17 @@ def _ent(company, label, icon, entity):
     return _page(label, icon, "fleet_entity_list", company, {"entity": entity}, entity=entity)
 
 
-def get_modules(company):
+def get_modules(company, counts=None):
+    _b = lambda k: (counts or {}).get(k) or None
     return [
         {"module": "Transport Operations", "icon": "truck", "submodules": [
-            {"name": "Overview", "pages": [
+            {"name": "Overview", "badge": _b("alerts"), "pages": [
                 _page("Dashboard", "dashboard", "fleet_dashboard", company),
                 _page("Live Tracking", "tracking", "fleet_tracking", company),
                 _page("Reports & BI", "chart", "fleet_reports", company),
                 _ent(company, "Alerts", "bell", "alerts"),
             ]},
-            {"name": "Trips & Dispatch", "pages": [
+            {"name": "Trips & Dispatch", "badge": _b("trips"), "pages": [
                 _ent(company, "Trips", "trips", "trips"),
                 _ent(company, "Dispatch Orders", "clipboard", "dispatches"),
                 _ent(company, "Deliveries & POD", "package", "deliveries"),

@@ -39,6 +39,20 @@ def dashboard(request, company_slug):
         ).aggregate(t=Sum("amount"))["t"] or 0))
     by_status = list(units.values("status").annotate(n=Count("id")))
 
+    # collection rate: billed vs collected (last 3 months)
+    billed_3m = float(m.RentInvoice.objects.filter(
+        company=c, issue_date__gte=today - timedelta(days=90)).aggregate(t=Sum("amount"))["t"] or 0)
+    coll_3m = float(m.RentPayment.objects.filter(
+        company=c, payment_date__gte=today - timedelta(days=90)).aggregate(t=Sum("amount"))["t"] or 0)
+    coll_rate = round(coll_3m / billed_3m * 100) if billed_3m else 0
+    coll_delta, coll_dir = D.pct_delta(collected[-1] if len(collected) > 1 else 0,
+                                       collected[-2] if len(collected) > 1 else 0)
+    # revenue by property
+    by_prop = (m.RentPayment.objects.filter(company=c)
+               .values("invoice__lease__unit__building__property__name")
+               .annotate(t=Sum("amount")).order_by("-t")[:5])
+    prop_max = max([float(r["t"] or 0) for r in by_prop] or [1])
+
     alerts = []
     for rs in m.RentSchedule.objects.filter(company=c, status="overdue").order_by("due_date")[:4]:
         alerts.append({"icon": "receipt", "level": "danger",
@@ -63,9 +77,11 @@ def dashboard(request, company_slug):
         "title": "Rental Dashboard", "subtitle": "Building & Property Rental",
         "kpis": [
             D.kpi("Occupancy", f"{occupancy}%", "building", "#3b82f6", f"{occupied}/{total_units} units"),
-            D.kpi("Rent Due This Month", f"{due_month:,.0f}", "receipt", "#f59e0b", "pending + overdue"),
+            D.kpi("Collection Rate", f"{coll_rate}%", "bank", "#22c55e",
+                  f"{coll_3m:,.0f} / {billed_3m:,.0f} · 90d"),
+            D.kpi("Rent Collected (Mo)", f"{collected[-1] if collected else 0:,.0f}", "receipt", "#f59e0b",
+                  "this month", delta=coll_delta, delta_dir=coll_dir, spark=collected),
             D.kpi("Overdue Rent", f"{overdue:,.0f}", "wallet", "#ef4444", "needs collection"),
-            D.kpi("Open Maintenance", f"{open_maint}", "wrench", "#22c55e", "requests in progress"),
         ],
         "line": {"title": "Rent Collected (6 months)", "subtitle": "Payments received per month",
                  "labels": [l for _, _, l in months], "label": "Collected",
@@ -94,6 +110,14 @@ def dashboard(request, company_slug):
              "rows": [[p.payment_no, p.invoice.invoice_no, f"{p.payment_date:%b %d}",
                        f"{p.amount:,.0f}", p.method or "—"]
                       for p in m.RentPayment.objects.filter(company=c).order_by("-payment_date")[:6]]},
+        ],
+        "bars": [
+            {"title": "Revenue by Property", "subtitle": "Total rent collected",
+             "icon": "building",
+             "rows": [{"label": r["invoice__lease__unit__building__property__name"] or "—",
+                       "value": f"{r['t']:,.0f}",
+                       "pct": round(float(r["t"] or 0) / prop_max * 100)}
+                      for r in by_prop]},
         ],
     }
     return D.render_module_dashboard(request, c, cfg)

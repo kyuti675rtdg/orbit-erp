@@ -8,7 +8,8 @@ def _ent(company, label, icon, entity):
                  {"entity": entity}, entity=entity)
 
 
-def get_modules(company, include_hr=True, include_finance=True):
+def get_modules(company, counts=None, include_hr=True, include_finance=True):
+    _b = lambda k: (counts or {}).get(k) or None
     modules = []
     if include_hr:
         modules.append({
@@ -18,7 +19,7 @@ def get_modules(company, include_hr=True, include_finance=True):
                     _ent(company, "Departments", "building", "departments"),
                     _ent(company, "Employees", "users", "employees"),
                 ]},
-                {"name": "Time & Leave", "pages": [
+                {"name": "Time & Leave", "badge": _b("leave"), "pages": [
                     _ent(company, "Attendance", "clock", "attendance"),
                     _ent(company, "Leave Requests", "calendar", "leave-requests"),
                 ]},
@@ -35,7 +36,7 @@ def get_modules(company, include_hr=True, include_finance=True):
                     _ent(company, "Chart of Accounts", "file", "gl-accounts"),
                     _ent(company, "Journal Entries", "pencil", "journal"),
                 ]},
-                {"name": "Payables & Assets", "pages": [
+                {"name": "Payables & Assets", "badge": _b("bills"), "pages": [
                     _ent(company, "Bills (AP)", "receipt", "bills"),
                     _ent(company, "Fixed Assets", "box", "assets"),
                 ]},

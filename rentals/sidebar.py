@@ -6,7 +6,8 @@ def _ent(company, label, icon, entity):
     return _page(label, icon, "rentals_entity_list", company, {"entity": entity}, entity=entity)
 
 
-def get_modules(company):
+def get_modules(company, counts=None):
+    _b = lambda k: (counts or {}).get(k) or None
     return [
         {"module": "Property Rental", "icon": "building", "submodules": [
             {"name": "Overview", "pages": [
@@ -22,12 +23,12 @@ def get_modules(company):
                 _ent(company, "Leases", "clipboard", "leases"),
                 _ent(company, "Rent Schedule", "calendar", "rent-schedule"),
             ]},
-            {"name": "Billing & Collection", "pages": [
+            {"name": "Billing & Collection", "badge": _b("overdue"), "pages": [
                 _ent(company, "Rent Invoices", "receipt", "rent-invoices"),
                 _ent(company, "Rent Payments", "bank", "rent-payments"),
                 _ent(company, "Deposits", "wallet", "deposits"),
             ]},
-            {"name": "Operations", "pages": [
+            {"name": "Operations", "badge": _b("maint"), "pages": [
                 _ent(company, "Maintenance Requests", "wrench", "maintenance-requests"),
                 _ent(company, "Work Orders", "gear", "work-orders"),
                 _ent(company, "Utilities", "file", "utilities"),

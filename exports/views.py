@@ -30,7 +30,29 @@ def dashboard(request, company_slug):
 
     order_monthly = D.monthly_sums(m.ExportOrder.objects.filter(company=c),
                                    "order_date", "total_amount", months)
+    ord_delta, ord_dir = D.pct_delta(order_monthly[-1] if len(order_monthly) > 1 else 0,
+                                     order_monthly[-2] if len(order_monthly) > 1 else 0)
     by_status = list(m.ExportOrder.objects.filter(company=c).values("status").annotate(n=Count("id")))
+
+    # receivables aging (unpaid portion by due-date bucket)
+    today = timezone.now().date()
+    unpaid = m.ExportInvoice.objects.filter(company=c).exclude(status="paid")
+    buckets = [("Not due", 0), ("1–30 days", 0), ("31–60 days", 0), ("60+ days", 0)]
+    bvals = [0, 0, 0, 0]
+    for i in unpaid:
+        bal = float(i.amount - i.paid_amount)
+        if not i.due_date or i.due_date >= today:
+            bvals[0] += bal
+        elif (today - i.due_date).days <= 30:
+            bvals[1] += bal
+        elif (today - i.due_date).days <= 60:
+            bvals[2] += bal
+        else:
+            bvals[3] += bal
+    top_buyers = (m.ExportOrder.objects.filter(company=c)
+                  .values("buyer__name").annotate(n=Count("id"), t=Sum("total_amount"))
+                  .order_by("-t")[:5])
+    top_max = max([float(r["t"] or 0) for r in top_buyers] or [1])
 
     alerts = []
     for o in m.ExportOrder.objects.filter(company=c, status="preparing").order_by("delivery_date")[:4]:
@@ -52,7 +74,8 @@ def dashboard(request, company_slug):
     cfg = {
         "title": "Export Dashboard", "subtitle": "Export Management",
         "kpis": [
-            D.kpi("Open Orders Value", f"{open_val:,.0f}", "package", "#3b82f6", "USD"),
+            D.kpi("Open Orders Value", f"{open_val:,.0f}", "package", "#3b82f6",
+                  "USD · open orders", delta=ord_delta, delta_dir=ord_dir, spark=order_monthly),
             D.kpi("Shipments In Transit", f"{transit}", "truck", "#22c55e", "on the water"),
             D.kpi("Receivables", f"{receivables:,.0f}", "receipt", "#f59e0b", "unpaid invoices"),
             D.kpi("QC / Prep Pending", f"{qc_pending}", "shield", "#ef4444", "needs attention"),
@@ -83,6 +106,17 @@ def dashboard(request, company_slug):
              "rows": [[i.invoice_no, i.buyer.name, f"{i.amount:,.0f}", f"{i.paid_amount:,.0f}",
                        i.get_status_display()]
                       for i in m.ExportInvoice.objects.filter(company=c).order_by("-invoice_date")[:6]]},
+        ],
+        "aging": {
+            "title": "Receivables Aging", "subtitle": "Unpaid balance by overdue bucket (USD)",
+            "cells": [{"label": lbl, "value": f"{v:,.0f}"} for (lbl, _), v in zip(buckets, bvals)],
+        },
+        "bars": [
+            {"title": "Top Buyers by Order Value", "subtitle": "Revenue concentration",
+             "icon": "users",
+             "rows": [{"label": r["buyer__name"], "value": f"{r['t']:,.0f}",
+                       "pct": round(float(r["t"] or 0) / top_max * 100)}
+                      for r in top_buyers]},
         ],
     }
     return D.render_module_dashboard(request, c, cfg)

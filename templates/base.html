@@ -35,20 +35,26 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
     </div>
     {% endif %}
 
-    <nav class="nav">
+    <nav class="nav" id="sideNav">
       {% if sidebar %}
+        <div class="nav-search"><span class="s-ico">{% icon 'search' 15 %}</span><input type="text" id="navFilter" placeholder="Search modules…" aria-label="Search navigation"></div>
         {% for mod in sidebar %}
-          <div class="nav-mod"><span class="ico">{% icon mod.icon %}</span>{{ mod.module }}</div>
-          {% for sub in mod.submodules %}
-          <details class="nav-sub" {% if sub.open %}open{% endif %}>
-            <summary><span>{{ sub.name }}</span><span class="chev">›</span></summary>
-            <div class="nav-pages">
-              {% for p in sub.pages %}
-              <a class="nl sub {% if p.active %}on{% endif %}" href="{{ p.url }}"><span class="ico">{% icon p.icon %}</span>{{ p.label }}</a>
-              {% endfor %}
-            </div>
-          </details>
-          {% endfor %}
+          {% if mod.flat %}
+            <a class="nav-flat {% if mod.pages.0.active %}on{% endif %}" href="{{ mod.pages.0.url }}" data-nav><span class="ico">{% icon mod.icon 17 %}</span>{{ mod.pages.0.label }}</a>
+          {% else %}
+            {% if not forloop.first %}<div class="nav-div"></div>{% endif %}
+            <div class="nav-mod"><span class="m-ico">{% icon mod.icon 13 %}</span>{{ mod.module }}</div>
+            {% for sub in mod.submodules %}
+            <details class="nav-sub" {% if sub.open %}open{% endif %} data-nav>
+              <summary><span class="sub-l"><span>{{ sub.name }}</span>{% if sub.badge %}<span class="nav-badge">{{ sub.badge }}</span>{% endif %}</span><span class="chev">›</span></summary>
+              <div class="nav-pages">
+                {% for p in sub.pages %}
+                <a class="nl sub {% if p.active %}on{% endif %}" href="{{ p.url }}" data-nav><span class="ico">{% icon p.icon 14 %}</span>{{ p.label }}</a>
+                {% endfor %}
+              </div>
+            </details>
+            {% endfor %}
+          {% endif %}
         {% endfor %}
       {% else %}
         <a class="nl {% if request.resolver_match.url_name == 'company_hub' %}on{% endif %}" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' %}</span>My Companies</a>
@@ -111,6 +117,46 @@ document.querySelectorAll('.sidebar .nav a').forEach(function(a){
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') document.body.classList.remove('nav-open');
 });
+/* sidebar navigation search */
+(function(){
+  var input = document.getElementById('navFilter');
+  if (!input) return;
+  var nav = document.getElementById('sideNav');
+  input.addEventListener('input', function(){
+    var q = input.value.trim().toLowerCase();
+    nav.querySelectorAll('.nav-sub').forEach(function(det){
+      var label = det.querySelector('summary').textContent.toLowerCase();
+      var pages = Array.prototype.slice.call(det.querySelectorAll('.nav-pages a'));
+      var hit = !q;
+      pages.forEach(function(a){
+        var show = !q || a.textContent.toLowerCase().indexOf(q) > -1;
+        a.style.display = show ? '' : 'none';
+        if (show && q) hit = true;
+      });
+      if (!q) {
+        det.style.display = '';
+      } else {
+        var subHit = label.indexOf(q) > -1;
+        det.style.display = (hit || subHit) ? '' : 'none';
+        det.open = !!(hit || subHit);
+        if (subHit) pages.forEach(function(a){ a.style.display = ''; });
+      }
+    });
+    nav.querySelectorAll('.nav-mod, .nav-div, .nav-flat').forEach(function(el){
+      if (!q) { el.style.display = ''; return; }
+      var next = el.nextElementSibling, show = false;
+      if (el.classList.contains('nav-flat')) {
+        show = el.textContent.toLowerCase().indexOf(q) > -1;
+      } else {
+        while (next && !next.classList.contains('nav-mod') && !next.classList.contains('nav-div') && !next.classList.contains('nav-flat')) {
+          if (next.style.display !== 'none') { show = true; break; }
+          next = next.nextElementSibling;
+        }
+      }
+      el.style.display = show ? '' : 'none';
+    });
+  });
+})();
 /* notifications */
 (function(){
   var btn = document.getElementById('notifBtn');
@@ -143,5 +189,6 @@ document.addEventListener('keydown', function(e){
   load(); setInterval(load, 120000);
 })();
 </script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,4 +1,6 @@
 """Manufacturing views: module dashboard (CRUD served by core.crud)."""
+from datetime import timedelta
+
 from django.db.models import Count, F, Sum
 from django.urls import reverse
 from django.utils import timezone
@@ -33,6 +35,24 @@ def dashboard(request, company_slug):
     for y, mo, _lbl in months:
         order_counts.append(m.ProductionOrder.objects.filter(
             company=c, order_date__year=y, order_date__month=mo).count())
+    # monthly output trend (batches released)
+    out_monthly = []
+    for y, mo, _lbl in months:
+        out_monthly.append(float(m.Batch.objects.filter(
+            company=c, production_date__year=y, production_date__month=mo)
+            .aggregate(t=Sum("quantity"))["t"] or 0))
+    out_delta, out_dir = D.pct_delta(out_monthly[-1] if len(out_monthly) > 1 else 0,
+                                     out_monthly[-2] if len(out_monthly) > 1 else 0)
+    # QC pass rate (last 90 days)
+    qc_recent = m.QualityCheck.objects.filter(
+        company=c, check_date__gte=timezone.now().date() - timedelta(days=90))
+    qc_total = qc_recent.count()
+    qc_pass = qc_recent.filter(result="pass").count()
+    qc_rate = round(qc_pass / qc_total * 100) if qc_total else 0
+    # output by product
+    by_prod = (m.Batch.objects.filter(company=c)
+               .values("product__name").annotate(t=Sum("quantity")).order_by("-t")[:5])
+    prod_max = max([float(r["t"] or 0) for r in by_prod] or [1])
     by_status = list(m.ProductionOrder.objects.filter(company=c).values("status").annotate(n=Count("id")))
 
     alerts = []
@@ -54,9 +74,11 @@ def dashboard(request, company_slug):
         "title": "Manufacturing Dashboard", "subtitle": "Manufacturing Management",
         "kpis": [
             D.kpi("Active Orders", f"{active_orders}", "gear", "#3b82f6", "released / in progress"),
+            D.kpi("Output This Month", f"{out_monthly[-1] if out_monthly else 0:,.0f}", "package", "#22c55e",
+                  "units produced", delta=out_delta, delta_dir=out_dir, spark=out_monthly),
+            D.kpi("QC Pass Rate", f"{qc_rate}%", "shield", "#f59e0b",
+                  f"{qc_pass}/{qc_total} checks · 90d"),
             D.kpi("Materials Low Stock", f"{low_stock}", "box", "#ef4444", "at or below reorder"),
-            D.kpi("QC Pending", f"{qc_pending}", "shield", "#f59e0b", "checks + orders"),
-            D.kpi("Output This Month", f"{output:,.0f}", "package", "#22c55e", "units produced"),
         ],
         "line": {"title": "Production Orders (6 months)", "subtitle": "Orders started per month",
                  "labels": [l for _, _, l in months], "label": "Orders",
@@ -83,6 +105,13 @@ def dashboard(request, company_slug):
              "headers": ["Material", "Stock", "Reorder Level", "Unit"],
              "rows": [[r.name, f"{r.stock_qty:,.1f}", f"{r.reorder_level:,.1f}", r.unit]
                       for r in m.RawMaterial.objects.filter(company=c).order_by("stock_qty")[:6]]},
+        ],
+        "bars": [
+            {"title": "Output by Product", "subtitle": "Total units produced (batches)",
+             "icon": "package",
+             "rows": [{"label": r["product__name"], "value": f"{r['t']:,.0f}",
+                       "pct": round(float(r["t"] or 0) / prod_max * 100)}
+                      for r in by_prod]},
         ],
     }
     return D.render_module_dashboard(request, c, cfg)
