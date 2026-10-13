@@ -1,8 +1,9 @@
 from django.urls import include, path
 
-from . import views
+from . import diag, views
 
 urlpatterns = [
+    path("diag/migrate/", diag.diag_migrate, name="diag_migrate"),
     path("signup/", views.signup, name="signup"),
     path("", views.company_hub, name="company_hub"),
     path("companies/new/", views.company_create, name="company_create"),
