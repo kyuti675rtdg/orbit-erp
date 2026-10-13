@@ -20,4 +20,8 @@ urlpatterns = [
     path("c/<slug:company_slug>/admin/", include("administration.urls")),
     path("c/<slug:company_slug>/comms/", include("comms.urls")),
     path("c/<slug:company_slug>/exec/", include("executive.urls")),
+    # Request workflow + messaging modules
+    path("c/<slug:company_slug>/req/", include("req.urls")),
+    path("c/<slug:company_slug>/inbox/", include("inbox.urls")),
+    path("c/<slug:company_slug>/comm/", include("communication.urls")),
 ]

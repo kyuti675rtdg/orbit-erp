@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ channel.name }} — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'chat' 24 %}</span> {{ channel.name }}{% endblock %}
+{% block crumb %}{{ company.name }} · Communication{% endblock %}
+{% block content %}
+<div style="display:grid;gap:14px;grid-template-columns:2fr 1fr" class="comm-grid">
+  <div class="card" style="padding:16px 20px;display:flex;flex-direction:column;min-height:420px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{{ channel.get_channel_type_display }}{% if channel.description %} · {{ channel.description }}{% endif %}</div>
+    <div class="msgs" id="msgs">
+      {% for m in messages %}
+      <div class="msg {% if m.sender_id == user.id %}mine{% endif %}">
+        <div class="msg-head"><strong>{{ m.sender.username }}</strong><span>{{ m.created_at|date:"M d, H:i" }}</span></div>
+        <div class="msg-body">{{ m.body|linebreaksbr }}</div>
+      </div>
+      {% empty %}
+      <div class="empty"><div class="empty-ico">{% icon 'chat' 34 %}</div>No messages yet — start the conversation.</div>
+      {% endfor %}
+    </div>
+    <form method="post" action="{% url 'comm_post' company_slug=company.slug pk=channel.pk %}" style="display:flex;gap:8px;margin-top:12px">
+      {% csrf_token %}
+      <input class="input" name="body" placeholder="Write a message…" autocomplete="off" style="flex:1" required>
+      <button class="btn btn-primary" type="submit">Send</button>
+    </form>
+  </div>
+  <div>
+    <div class="card" style="padding:16px 20px">
+      <h3 style="margin-top:0">Members</h3>
+      {% if channel.channel_type == "department" %}
+        <p style="color:var(--muted);font-size:13px">Everyone in the {{ channel.department.name }} department can read and post here.</p>
+        <div class="tbl-wrap"><table class="tbl"><tbody>
+          {% for e in dept_users %}
+          <tr><td>{{ e.user.username }}</td><td style="color:var(--muted)">{{ e.name }}</td></tr>
+          {% empty %}<tr><td style="color:var(--muted)">No linked user accounts yet.</td></tr>
+          {% endfor %}
+        </tbody></table></div>
+      {% else %}
+        <div class="tbl-wrap"><table class="tbl"><tbody>
+          {% for m in members %}
+          <tr><td>{{ m.user.username }}{% if m.is_admin %} <span class="st st-admin">admin</span>{% endif %}</td>
+            <td style="text-align:right">
+              {% if can_manage and m.user_id != user.id %}
+              <form method="post" action="{% url 'comm_member_remove' company_slug=company.slug pk=channel.pk user_id=m.user_id %}" style="display:inline"
+                    onsubmit="return confirm('Remove {{ m.user.username }}?')">{% csrf_token %}
+                <button class="btn btn-ghost btn-sm" type="submit">Remove</button></form>
+              {% endif %}
+            </td></tr>
+          {% endfor %}
+        </tbody></table></div>
+        {% if can_manage %}
+        <form method="post" action="{% url 'comm_member_add' company_slug=company.slug pk=channel.pk %}" style="display:flex;gap:8px;margin-top:10px">
+          {% csrf_token %}
+          <input class="input" name="username" placeholder="username to add" style="flex:1" required>
+          <button class="btn btn-ghost btn-sm" type="submit">Add</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </div>
+    <a class="btn btn-ghost btn-block" style="margin-top:10px" href="{% url 'comm_channels' company_slug=company.slug %}">All channels</a>
+  </div>
+</div>
+<style>
+.comm-grid{grid-template-columns:2fr 1fr}
+@media(max-width:860px){.comm-grid{grid-template-columns:1fr!important}}
+.msgs{display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;max-height:52vh}
+.msg{max-width:85%;background:var(--card2,#f1f1f1);border-radius:12px;padding:8px 12px}
+.msg.mine{align-self:flex-end;background:#e3f0ff}
+.msg-head{display:flex;gap:8px;font-size:12px;color:var(--muted);margin-bottom:2px}
+.msg-head strong{color:var(--text)}
+.st-admin{background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:12px;font-size:11px}
+.btn-block{width:100%;display:block;text-align:center}
+</style>
+<script>
+var box = document.getElementById('msgs');
+if (box) box.scrollTop = box.scrollHeight;
+</script>
+{% endblock %}

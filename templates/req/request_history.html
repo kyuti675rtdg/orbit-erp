@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}Request Activity — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'clock' 24 %}</span> Request Activity History{% endblock %}
+{% block crumb %}{{ company.name }} · Requests{% endblock %}
+{% block content %}
+<div class="card" style="padding:6px 20px">
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>When</th><th>Request</th><th>Action</th><th>By</th><th>Notes</th><th></th></tr></thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+        <td style="white-space:nowrap">{{ e.created_at|date:"M d, H:i" }}</td>
+        <td><strong>{{ e.request.ref_no }}</strong><br><span style="color:var(--muted)">{{ e.request.title|truncatechars:40 }}</span></td>
+        <td><span class="st st-{{ e.action }}">{{ e.get_action_display }}</span></td>
+        <td>{{ e.actor.username }}</td>
+        <td>{{ e.notes|truncatechars:60 }}</td>
+        <td style="text-align:right"><a class="btn btn-ghost btn-sm" href="{% url 'req_detail' company_slug=company.slug pk=e.request.pk %}">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6"><div class="empty"><div class="empty-ico">{% icon 'clock' 34 %}</div>No activity yet.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<style>
+.st{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.st-created,.st-comment{background:#e8e8e8;color:#555}.st-submitted{background:#dbeafe;color:#1d4ed8}
+.st-approved{background:#d1fae5;color:#065f46}.st-rejected{background:#fee2e2;color:#991b1b}
+.st-returned{background:#fef3c7;color:#92400e}.st-cancelled{background:#f3f4f6;color:#6b7280}
+</style>
+{% endblock %}

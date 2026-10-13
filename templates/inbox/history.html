@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}Decision History — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'clock' 24 %}</span> Decision History{% endblock %}
+{% block crumb %}{{ company.name }} · Inbox{% endblock %}
+{% block content %}
+<div class="card" style="padding:6px 20px">
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Ref</th><th>Title</th><th>Requester</th><th>Decision</th><th>Decided</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.ref_no }}</strong></td>
+        <td>{{ r.title }}</td>
+        <td>{{ r.requester.username }}</td>
+        <td><span class="st st-{{ r.status }}">{{ r.get_status_display }}</span></td>
+        <td>{{ r.decided_at|date:"M d, H:i"|default:"—" }}</td>
+        <td style="text-align:right"><a class="btn btn-ghost btn-sm" href="{% url 'inbox_detail' company_slug=company.slug pk=r.pk %}">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6"><div class="empty"><div class="empty-ico">{% icon 'clock' 34 %}</div>No decisions recorded yet.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<style>
+.st{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.st-approved{background:#d1fae5;color:#065f46}.st-rejected{background:#fee2e2;color:#991b1b}
+.st-returned{background:#fef3c7;color:#92400e}.st-cancelled{background:#f3f4f6;color:#6b7280}
+</style>
+{% endblock %}

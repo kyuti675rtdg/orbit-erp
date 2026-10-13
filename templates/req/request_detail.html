@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ req.ref_no }} — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'inbox' 24 %}</span> {{ req.ref_no }}{% endblock %}
+{% block crumb %}{{ company.name }} · Requests{% endblock %}
+{% block content %}
+<div style="display:grid;gap:14px;grid-template-columns:2fr 1fr" class="req-grid">
+  <div>
+    <div class="card" style="padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">{{ req.title }}</h3>
+        <span class="st st-{{ req.status }}">{{ req.get_status_display }}</span>
+      </div>
+      <div class="kv">
+        <div><span>Type</span><strong>{{ req.get_request_type_display }}</strong></div>
+        <div><span>Requester</span><strong>{{ req.requester.username }}</strong></div>
+        <div><span>Priority</span><strong>{{ req.get_priority_display }}</strong></div>
+        {% if req.amount %}<div><span>Amount</span><strong>{{ req.amount }}</strong></div>{% endif %}
+        {% if req.needed_by %}<div><span>Needed by</span><strong>{{ req.needed_by }}</strong></div>{% endif %}
+        {% if req.start_date %}<div><span>Start</span><strong>{{ req.start_date }}</strong></div>{% endif %}
+        {% if req.end_date %}<div><span>End</span><strong>{{ req.end_date }}</strong></div>{% endif %}
+        <div><span>Approver</span><strong>{{ req.current_approver.username|default:"—" }}</strong></div>
+        <div><span>Submitted</span><strong>{{ req.created_at|date:"M d, Y H:i" }}</strong></div>
+      </div>
+      {% if req.description %}<p style="margin-top:12px">{{ req.description|linebreaksbr }}</p>{% endif %}
+      {% if req.review_notes %}<div class="note"><strong>Reviewer notes:</strong><br>{{ req.review_notes|linebreaksbr }}</div>{% endif %}
+    </div>
+
+    <div class="card" style="padding:20px;margin-top:14px">
+      <h3 style="margin-top:0">Activity History</h3>
+      <div class="timeline">
+        {% for e in events %}
+        <div class="tl-item">
+          <div class="tl-dot tl-{{ e.action }}"></div>
+          <div><strong>{{ e.get_action_display }}</strong> <span style="color:var(--muted)">by {{ e.actor.username }} · {{ e.created_at|date:"M d, H:i" }}</span>
+          {% if e.notes %}<div>{{ e.notes|linebreaksbr }}</div>{% endif %}</div>
+        </div>
+        {% empty %}<p style="color:var(--muted)">No activity yet.</p>{% endfor %}
+      </div>
+      {% if can_decide or req.requester_id == user.id %}
+      <form method="post" action="{% url 'req_action' company_slug=company.slug pk=req.pk action='comment' %}" style="margin-top:12px;display:flex;gap:8px">
+        {% csrf_token %}
+        <input class="input" name="note" placeholder="Add a comment…" style="flex:1">
+        <button class="btn btn-ghost btn-sm" type="submit">Comment</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="padding:20px">
+      <h3 style="margin-top:0">Actions</h3>
+      {% if can_submit %}
+      <form method="post" action="{% url 'req_action' company_slug=company.slug pk=req.pk action='submit' %}">{% csrf_token %}
+        <button class="btn btn-primary btn-block" type="submit">Submit for Approval</button></form>
+      {% endif %}
+      {% if can_edit %}
+      <a class="btn btn-ghost btn-block" style="margin-top:8px" href="{% url 'req_update' company_slug=company.slug pk=req.pk %}">Edit</a>
+      {% endif %}
+      {% if can_decide %}
+      <form method="post" action="{% url 'req_action' company_slug=company.slug pk=req.pk action='approve' %}" style="margin-top:8px">{% csrf_token %}
+        <input class="input" name="note" placeholder="Approval note (optional)" style="margin-bottom:8px">
+        <button class="btn btn-primary btn-block" type="submit">Approve</button></form>
+      <form method="post" action="{% url 'req_action' company_slug=company.slug pk=req.pk action='reject' %}" style="margin-top:8px"
+            onsubmit="return confirm('Reject this request?')">{% csrf_token %}
+        <input class="input" name="note" placeholder="Rejection reason" style="margin-bottom:8px">
+        <button class="btn btn-ghost btn-block" type="submit">Reject</button></form>
+      <form method="post" action="{% url 'req_action' company_slug=company.slug pk=req.pk action='return' %}" style="margin-top:8px">{% csrf_token %}
+        <input class="input" name="note" placeholder="What needs to change? (required)" style="margin-bottom:8px" required>
+        <button class="btn btn-ghost btn-block" type="submit">Return for Changes</button></form>
+      {% endif %}
+      {% if can_cancel %}
+      <form method="post" action="{% url 'req_action' company_slug=company.slug pk=req.pk action='cancel' %}" style="margin-top:8px"
+            onsubmit="return confirm('Cancel this request?')">{% csrf_token %}
+        <button class="btn btn-ghost btn-block" type="submit">Cancel Request</button></form>
+      {% endif %}
+      {% if not can_submit and not can_decide and not can_cancel and not can_edit %}
+      <p style="color:var(--muted)">No actions available for your role at this stage.</p>
+      {% endif %}
+    </div>
+    <a class="btn btn-ghost btn-block" style="margin-top:10px" href="{% url 'req_list' company_slug=company.slug %}">Back to list</a>
+  </div>
+</div>
+<style>
+.req-grid{grid-template-columns:2fr 1fr}
+@media(max-width:860px){.req-grid{grid-template-columns:1fr!important}}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.kv span{color:var(--muted);font-size:12px;display:block}
+.timeline{display:flex;flex-direction:column;gap:12px}
+.tl-item{display:flex;gap:10px}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);margin-top:4px;flex:none}
+.tl-approved,.tl-submitted{background:#22a06b}.tl-rejected{background:#d64545}.tl-returned{background:#e6a23c}
+.note{background:var(--card2,#f6f6f6);border-radius:8px;padding:10px 12px;margin-top:12px}
+.st{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.st-draft{background:#e8e8e8;color:#555}.st-submitted{background:#dbeafe;color:#1d4ed8}
+.st-approved{background:#d1fae5;color:#065f46}.st-rejected{background:#fee2e2;color:#991b1b}
+.st-returned{background:#fef3c7;color:#92400e}.st-cancelled{background:#f3f4f6;color:#6b7280}
+.btn-block{width:100%;display:block;text-align:center}
+</style>
+{% endblock %}

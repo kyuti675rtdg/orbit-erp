@@ -99,6 +99,9 @@ INSTALLED_APPS = [
     "administration",
     "comms",
     "executive",
+    "req",
+    "inbox",
+    "communication",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}Pending Approval — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'inbox' 24 %}</span> Pending Approval{% endblock %}
+{% block crumb %}{{ company.name }} · Inbox{% endblock %}
+{% block content %}
+<div class="card" style="padding:16px 20px;margin-bottom:14px">
+  <form method="get" style="display:flex;gap:10px">
+    <select class="input" name="type" style="max-width:220px">
+      <option value="">All types</option>
+      {% for v,l in type_choices %}<option value="{{ v }}" {% if ftype == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
+    {% if ftype %}<a class="btn btn-ghost btn-sm" href="?">Clear</a>{% endif %}
+  </form>
+</div>
+<div class="card" style="padding:6px 20px">
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Ref</th><th>Title</th><th>Type</th><th>Requester</th><th>Priority</th><th>Waiting Since</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.ref_no }}</strong></td>
+        <td>{{ r.title }}</td>
+        <td>{{ r.get_request_type_display }}</td>
+        <td>{{ r.requester.username }}</td>
+        <td><span class="pr pr-{{ r.priority }}">{{ r.get_priority_display }}</span></td>
+        <td>{{ r.created_at|date:"M d, H:i" }}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <a class="btn btn-primary btn-sm" href="{% url 'inbox_detail' company_slug=company.slug pk=r.pk %}">Review</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7"><div class="empty"><div class="empty-ico">{% icon 'check' 34 %}</div>All caught up — nothing awaiting your approval.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<style>
+.pr{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.pr-low{background:#e8e8e8;color:#555}.pr-normal{background:#dbeafe;color:#1d4ed8}
+.pr-high{background:#fef3c7;color:#92400e}.pr-urgent{background:#fee2e2;color:#991b1b}
+</style>
+{% endblock %}

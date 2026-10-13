@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{% if req %}Edit{% else %}New{% endif %} Request — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'plus' 24 %}</span> {% if req %}Edit{% else %}New{% endif %} Request{% endblock %}
+{% block crumb %}{{ company.name }} · Requests{% endblock %}
+{% block content %}
+<div class="card" style="padding:20px;max-width:720px">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="fg"><label>Request type</label>{{ form.request_type }}</div>
+      <div class="fg"><label>Priority</label>{{ form.priority }}</div>
+      <div class="fg fg-full"><label>Title</label>{{ form.title }}</div>
+      <div class="fg fg-full"><label>Description</label>{{ form.description }}</div>
+      <div class="fg"><label>Amount (if any)</label>{{ form.amount }}</div>
+      <div class="fg"><label>Needed by</label>{{ form.needed_by }}</div>
+      <div class="fg"><label>Start date (leave / travel)</label>{{ form.start_date }}</div>
+      <div class="fg"><label>End date (leave / travel)</label>{{ form.end_date }}</div>
+    </div>
+    {% if form.errors %}<div class="form-errors">{{ form.errors }}</div>{% endif %}
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-ghost" type="submit" name="do" value="draft">Save Draft</button>
+      <button class="btn btn-primary" type="submit" name="do" value="submit">Submit for Approval</button>
+      <a class="btn btn-ghost" href="{% url 'req_list' company_slug=company.slug %}">Cancel</a>
+    </div>
+  </form>
+</div>
+<div class="card" style="padding:16px 20px;max-width:720px;margin-top:12px">
+  <strong>How approvals work</strong>
+  <p style="color:var(--muted);margin:6px 0 0">Submitting routes your request to an owner, administrator or manager. They can approve, reject, or return it for changes — you'll be notified of every decision.</p>
+</div>
+{% endblock %}

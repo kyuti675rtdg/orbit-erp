@@ -142,6 +142,88 @@ def seed_comms(co, admin):
                               location="Board Room")
 
 
+def seed_requests(co, admin):
+    """Sample requests across the workflow: submitted, approved, returned, draft."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from req import hooks as rq_hooks
+    from req.models import Request
+    if Request.objects.filter(company=co).exists():
+        return
+    today = timezone.now().date()
+    approver = rq_hooks.pick_approver(co, admin) or admin
+    samples = [
+        ("leave", "Annual leave — family event", "Requesting 5 days annual leave.",
+         None, today + timedelta(days=14), today + timedelta(days=14),
+         today + timedelta(days=18), "submitted"),
+        ("purchase", "Purchase 10 office chairs", "Ergonomic chairs for the new hires.",
+         85000, today + timedelta(days=10), None, None, "submitted"),
+        ("expense", "Fuel reimbursement — October", "Field trips fuel receipts attached.",
+         12500, None, None, None, "approved"),
+        ("maintenance", "Generator servicing", "Quarterly service for the backup generator.",
+         18000, today + timedelta(days=7), None, None, "returned"),
+        ("advance", "Salary advance", "Advance against November salary.",
+         20000, None, None, None, "draft"),
+        ("loan", "Emergency loan request", "Medical emergency in the family.",
+         60000, None, None, None, "submitted"),
+    ]
+    for rtype, title, desc, amt, needed, start, end, status in samples:
+        r = Request.objects.create(
+            company=co, requester=admin, request_type=rtype, title=title,
+            description=desc, amount=amt, needed_by=needed,
+            start_date=start, end_date=end, priority="normal", status="draft")
+        rq_hooks.log_event(co, r, admin, "created", "Request created as draft.")
+        if status != "draft":
+            r.status = "submitted"
+            r.save(update_fields=["status"])
+            rq_hooks.on_submitted(co, r, admin)
+        if status == "approved":
+            r.status = "approved"
+            r.review_notes = "Approved — within budget."
+            r.save(update_fields=["status", "review_notes"])
+            rq_hooks.on_decided(co, r, approver, "approved")
+        elif status == "returned":
+            r.status = "returned"
+            r.review_notes = "Please attach a supplier quotation."
+            r.save(update_fields=["status", "review_notes"])
+            rq_hooks.on_returned(co, r, approver)
+
+
+def seed_communication(co, admin):
+    """Department channels, a management group, and sample messages."""
+    from communication.models import Channel, ChannelMember, ChatMessage
+    from shared.models import Department
+    if Channel.objects.filter(company=co).exists():
+        return
+    depts = list(Department.objects.filter(company=co)[:6])
+    if not depts:
+        for name, code in [("Operations", "OPS"), ("Administration", "ADM")]:
+            depts.append(Department.objects.create(
+                company=co, name=name, code=code,
+                description=f"{name} department"))
+    for dept in depts:
+        ch, _ = Channel.objects.get_or_create(
+            company=co, channel_type="department", department=dept,
+            defaults={"name": f"{dept.name} — Team", "created_by": admin,
+                      "description": f"Team discussions for {dept.name}."})
+        ChannelMember.objects.get_or_create(channel=ch, user=admin,
+                                            defaults={"is_admin": True})
+    first = Channel.objects.filter(company=co, channel_type="department").first()
+    if first:
+        ChatMessage.objects.create(
+            company=co, channel=first, sender=admin,
+            body="Welcome to the team channel. Please use this space for "
+                 "department updates and coordination.")
+    mgmt = Channel.objects.create(
+        company=co, name="Management", channel_type="group",
+        description="Cross-department management coordination.",
+        created_by=admin)
+    ChannelMember.objects.create(channel=mgmt, user=admin, is_admin=True)
+    ChatMessage.objects.create(
+        company=co, channel=mgmt, sender=admin,
+        body="Weekly priorities: clear pending approvals and review the budget.")
+
+
 def seed_executive(co):
     from executive import models as e
     if e.ReportDefinition.objects.filter(company=co).exists():
@@ -182,5 +264,7 @@ class Command(BaseCommand):
             seed_admin(co)
             seed_comms(co, admin)
             seed_executive(co)
+            seed_requests(co, admin)
+            seed_communication(co, admin)
             n += 1
         self.stdout.write(self.style.SUCCESS(f"enterprise seed ok ({n} companies)"))

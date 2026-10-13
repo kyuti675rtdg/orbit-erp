@@ -94,6 +94,9 @@ def attention_counts(company):
         c["receivables"] = ARInvoice.objects.filter(company=company).exclude(status="paid").count()
         from comms.models import Task
         c["tasks"] = Task.objects.filter(company=company).exclude(status="done").count()
+        from req.models import Request as ERPRequest
+        c["req_pending"] = ERPRequest.objects.filter(
+            company=company, status="submitted").count()
     except Exception:
         pass
     return {k: v for k, v in c.items() if v}
@@ -161,11 +164,31 @@ def build_sidebar(request):
     from administration import sidebar as adm_sb
     from comms import sidebar as com_sb
     from executive import sidebar as exe_sb
+    from req import sidebar as req_sb
+    from inbox import sidebar as inb_sb
+    from communication import sidebar as comm2_sb
     items.extend(hr_sb.get_section(company, counts))
     items.extend(fin_sb.get_section(company, counts))
     items.extend(adm_sb.get_section(company, counts))
     items.extend(com_sb.get_section(company, counts))
     items.extend(exe_sb.get_section(company, counts))
+    # per-user badges for the workflow modules
+    try:
+        from req.models import Request as _RQ
+        from req import hooks as _rq_hooks
+        _me = request.user
+        _pq = _RQ.objects.filter(company=company, status="submitted")
+        if request.membership.role not in _rq_hooks.APPROVER_ROLES:
+            _pq = _pq.filter(current_approver=_me)
+        counts["inbox_pending"] = _pq.count() or None
+        from communication import permissions as _cp
+        counts["comm_unread"] = sum(
+            _cp.unread_counts(company, _me, request.membership).values()) or None
+    except Exception:
+        pass
+    items.extend(req_sb.get_section(company, counts))
+    items.extend(inb_sb.get_section(company, counts))
+    items.extend(comm2_sb.get_section(company, counts))
     items.append({"type": "divider"})
     items.append({"type": "link", "label": "Switch Company", "icon": "globe",
                   "url": reverse("company_hub"), "url_name": "company_hub", "bottom": True})
