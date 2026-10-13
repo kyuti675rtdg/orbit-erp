@@ -36,9 +36,9 @@ class Migration(migrations.Migration):
             name='Attendance',
         ),
         migrations.DeleteModel(
-            name='Employee',
+            name='Payroll',
         ),
         migrations.DeleteModel(
-            name='Payroll',
+            name='Employee',
         ),
     ]
