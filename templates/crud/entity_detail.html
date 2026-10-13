@@ -7,7 +7,10 @@
 <div class="toolbar">
   <a class="btn btn-ghost btn-sm" href="{{ urls.list }}"><span style="display:inline-flex;vertical-align:-3px">{% icon 'back' 14 %}</span> Back to {{ cfg.title }}</a>
   {% if membership.can_edit and not readonly %}
-  <div style="display:flex;gap:8px">
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% for t in transitions %}
+    <a class="btn btn-primary btn-sm" href="{{ action_base }}{{ obj.pk }}/action/{{ t.name }}/">{% icon 'shield' 14 %} {{ t.label }}</a>
+    {% endfor %}
     <a class="btn btn-ghost btn-sm" href="{{ urls.update }}">{% icon 'pencil' 14 %} Edit</a>
     <a class="btn btn-danger btn-sm" href="{{ urls.delete }}">{% icon 'trash' 14 %} Delete</a>
   </div>

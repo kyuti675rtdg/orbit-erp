@@ -118,6 +118,7 @@ ENTITIES = {
         detail_related=[
             ("Receipts", "receipts", [("Receipt No", "receipt_no"), ("Date", "receipt_date"), ("Amount", "amount")]),
         ],
+        post_save="core.integrations.sync_export_invoice_to_ar",
     ),
     "receipts": E(
         title="Payment Receipts", singular="Receipt", icon="bank", finance=True,

@@ -14,5 +14,10 @@ urlpatterns = [
     path("c/<slug:company_slug>/exports/", include("exports.urls")),
     path("c/<slug:company_slug>/manufacturing/", include("manufacturing.urls")),
     path("c/<slug:company_slug>/rentals/", include("rentals.urls")),
-    path("c/<slug:company_slug>/shared/", include("shared.urls")),
+    # Enterprise modules (centralized HR / Finance / Admin / Comms / Executive)
+    path("c/<slug:company_slug>/hr/", include("hr.urls")),
+    path("c/<slug:company_slug>/finance/", include("finance.urls")),
+    path("c/<slug:company_slug>/admin/", include("administration.urls")),
+    path("c/<slug:company_slug>/comms/", include("comms.urls")),
+    path("c/<slug:company_slug>/exec/", include("executive.urls")),
 ]

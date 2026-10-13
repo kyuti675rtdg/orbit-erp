@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ trans.label }} — {{ obj }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'shield' 24 %}</span> {{ trans.label }} {{ cfg.singular }}{% endblock %}
+{% block crumb %}{{ company.name }} · {{ cfg.title }} · Workflow{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px">
+  <h3>Confirm: {{ trans.label }}</h3>
+  <div class="sub">This will move <strong>{{ obj }}</strong> to status <strong>{{ trans.to }}</strong>.</div>
+  <form method="post" style="margin-top:14px">
+    {% csrf_token %}
+    <label class="lbl" for="id_note">Note (optional)</label>
+    <textarea class="input" id="id_note" name="note" rows="3" placeholder="Reason or comment for the audit trail…"></textarea>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-primary" type="submit">{% icon 'shield' 14 %} Confirm {{ trans.label }}</button>
+      <a class="btn btn-ghost" href="{{ urls.list }}{{ obj.pk }}/">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

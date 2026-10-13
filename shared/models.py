@@ -23,8 +23,13 @@ class Employee(CompanyOwned):
                       ("terminated", "Terminated")]
     employee_id = models.CharField(max_length=30)
     name = models.CharField(max_length=150)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                null=True, blank=True, related_name="employee_profile",
+                                help_text="Linked login for self-service portal")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL,
                                    null=True, blank=True, related_name="employees")
+    branch = models.ForeignKey("administration.Branch", on_delete=models.SET_NULL,
+                               null=True, blank=True, related_name="employees")
     position = models.CharField(max_length=120, blank=True)
     hire_date = models.DateField(null=True, blank=True)
     phone = models.CharField(max_length=40, blank=True)
@@ -45,6 +50,7 @@ class Attendance(CompanyOwned):
     check_in = models.TimeField(null=True, blank=True)
     check_out = models.TimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="present")
+    notes = models.CharField(max_length=200, blank=True)
 
     class Meta:
         ordering = ["-date"]

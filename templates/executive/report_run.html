@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ definition.name }} — Report{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'chart' 24 %}</span> {{ definition.name }}{% endblock %}
+{% block crumb %}{{ company.name }} · Executive · Custom Reports{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div class="sub">{{ definition.get_dataset_display }}{% if definition.status_filter %} · status = {{ definition.status_filter }}{% endif %} · {{ rows|length }} rows</div>
+  <a class="btn btn-primary btn-sm" href="{{ csv_url }}">{% icon 'file' 14 %} Export CSV</a>
+</div>
+<div class="card">
+  {% if rows %}
+  <div class="tbl-wrap"><table class="tbl"><thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for row in rows %}<tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+  {% else %}<div style="color:var(--muted)">No data for this report's dataset/filter.</div>{% endif %}
+</div>
+{% endblock %}

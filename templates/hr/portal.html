@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load icons humanize %}
+{% block title %}Self-Service Portal — HR{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'users' 24 %}</span> Employee Self-Service{% endblock %}
+{% block crumb %}{{ company.name }} · HR Management{% endblock %}
+{% block content %}
+{% if not employee %}
+<div class="card" style="max-width:560px">
+  <h3>No employee profile linked</h3>
+  <div class="sub">Your login is not linked to an employee record yet. Ask an HR administrator to link your user account on your employee file.</div>
+</div>
+{% else %}
+<div class="card">
+  <h3>{{ employee.name }}</h3>
+  <div class="sub">{{ employee.employee_id }} · {{ employee.position|default:"—" }} · {{ employee.department.name|default:"—" }}</div>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)">
+    <span>Hired: {{ employee.hire_date|default:"—" }}</span>
+    <span>Type: {{ employee.get_employment_type_display }}</span>
+    <span>Status: {{ employee.get_status_display }}</span>
+  </div>
+</div>
+<div class="grid2">
+  <div class="card">
+    <h3>My Leave Requests</h3><div class="sub">Recent applications</div>
+    {% if leaves %}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Type</th><th>Dates</th><th>Status</th></tr></thead>
+    <tbody>{% for l in leaves %}<tr><td>{{ l.get_leave_type_display }}</td><td>{{ l.start_date }} → {{ l.end_date }}</td><td>{{ l.get_status_display }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div style="color:var(--muted);font-size:13px">No leave requests.</div>{% endif %}
+    <a class="btn btn-ghost btn-sm" style="margin-top:10px" href="{% url 'hr_entity_create' company_slug=company.slug entity='leave-requests' %}">Request Leave</a>
+  </div>
+  <div class="card">
+    <h3>My Payslips</h3><div class="sub">Pay history</div>
+    {% if payslips %}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Period</th><th>Net</th><th>Status</th></tr></thead>
+    <tbody>{% for p in payslips %}<tr><td>{{ p.period|date:"M Y" }}</td><td>{{ p.net|intcomma }}</td><td>{{ p.get_status_display }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div style="color:var(--muted);font-size:13px">No payslips yet.</div>{% endif %}
+  </div>
+</div>
+<div class="grid2">
+  <div class="card">
+    <h3>My Objectives</h3><div class="sub">Performance goals</div>
+    {% if objectives %}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Objective</th><th>Progress</th><th>Status</th></tr></thead>
+    <tbody>{% for o in objectives %}<tr><td>{{ o.title }}</td><td>{{ o.progress }}%</td><td>{{ o.get_status_display }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div style="color:var(--muted);font-size:13px">No objectives assigned.</div>{% endif %}
+  </div>
+  <div class="card">
+    <h3>My Tasks</h3><div class="sub">Assigned to me</div>
+    {% if tasks %}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Task</th><th>Due</th><th>Status</th></tr></thead>
+    <tbody>{% for t in tasks %}<tr><td>{{ t.title }}</td><td>{{ t.due_date|default:"—" }}</td><td>{{ t.get_status_display }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<div style="color:var(--muted);font-size:13px">No open tasks.</div>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

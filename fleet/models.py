@@ -94,6 +94,10 @@ class Driver(CompanyScoped):
     address = models.CharField(max_length=255, blank=True)
     emergency_contact = models.CharField(max_length=120, blank=True)
     notes = models.TextField(blank=True)
+    shared_employee = models.OneToOneField(
+        "shared.Employee", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="driver_profile",
+        help_text="Link to the centralized HR employee record")
 
     class Meta:
         ordering = ["name"]
@@ -442,52 +446,7 @@ class Payment(CompanyScoped):
 
 
 # ---------------------------------------------------------------- HR & payroll
-class Employee(CompanyScoped):
-    STATUS_CHOICES = [("active", "Active"), ("on_leave", "On Leave"), ("terminated", "Terminated")]
-    name = models.CharField(max_length=120)
-    role = models.CharField(max_length=80)
-    phone = models.CharField(max_length=40, blank=True)
-    hire_date = models.DateField(null=True, blank=True)
-    salary_monthly = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="active")
-    driver = models.OneToOneField(Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name="employee")
 
-    class Meta:
-        ordering = ["name"]
-
-    def __str__(self):
-        return f"{self.name} ({self.role})"
-
-
-class Attendance(CompanyScoped):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="attendance")
-    date = models.DateField()
-    present = models.BooleanField(default=True)
-    hours = models.DecimalField(max_digits=4, decimal_places=1, default=8, blank=True)
-    note = models.CharField(max_length=200, blank=True)
-
-    class Meta:
-        ordering = ["-date"]
-        unique_together = ("company", "employee", "date")
-
-
-class Payroll(CompanyScoped):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="payrolls")
-    month = models.DateField(help_text="First day of the payroll month")
-    gross = models.DecimalField(max_digits=12, decimal_places=2)
-    deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True)
-    net = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    status = models.CharField(
-        max_length=12, choices=[("draft", "Draft"), ("approved", "Approved"), ("paid", "Paid")], default="draft"
-    )
-
-    class Meta:
-        ordering = ["-month"]
-        unique_together = ("company", "employee", "month")
-
-    def save(self, *args, **kwargs):
-        self.net = (self.gross or 0) - (self.deductions or 0)
-        super().save(*args, **kwargs)
 
 
 # ---------------------------------------------------------------- Alerts

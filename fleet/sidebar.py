@@ -40,15 +40,8 @@ def get_modules(company, counts=None):
                 _ent(company, "Part Issues", "box", "part-issues"),
             ]},
         ]},
-        {"module": "HR & Payroll", "icon": "users", "submodules": [
-            {"name": "People", "pages": [
-                _ent(company, "Employees", "users", "employees"),
-                _ent(company, "Attendance", "clock", "attendance"),
-                _ent(company, "Payroll", "card", "payrolls"),
-            ]},
-        ]},
-        {"module": "Finance", "icon": "receipt", "submodules": [
-            {"name": "Transport Finance", "pages": [
+        {"module": "Billing & Expenses", "icon": "receipt", "submodules": [
+            {"name": "Billing", "icon": "receipt", "pages": [
                 _ent(company, "Trip Expenses", "wallet", "expenses"),
                 _ent(company, "Driver Advances", "cash", "advances"),
                 _ent(company, "Invoices", "receipt", "invoices"),

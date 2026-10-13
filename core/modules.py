@@ -88,6 +88,12 @@ def attention_counts(company):
         from shared.models import Bill, LeaveRequest
         c["leave"] = LeaveRequest.objects.filter(company=company, status="pending").count()
         c["bills"] = Bill.objects.filter(company=company).exclude(status="paid").count()
+        from hr.models import JobVacancy
+        c["vacancies"] = JobVacancy.objects.filter(company=company, status="open").count()
+        from finance.models import ARInvoice
+        c["receivables"] = ARInvoice.objects.filter(company=company).exclude(status="paid").count()
+        from comms.models import Task
+        c["tasks"] = Task.objects.filter(company=company).exclude(status="done").count()
     except Exception:
         pass
     return {k: v for k, v in c.items() if v}
@@ -106,8 +112,8 @@ INDUSTRY_META = {
 def build_sidebar(request):
     """Sidebar nav: flat, reference-style list.
 
-    Structure: Dashboard link -> INDUSTRY section (module dashboard link +
-    expandable submodule groups) -> ENTERPRISE section (shared groups) ->
+    Structure: Dashboard link -> INDUSTRY section -> HR MANAGEMENT ->
+    FINANCE & ACCOUNTING -> ADMINISTRATION -> COMMUNICATION -> EXECUTIVE ->
     divider -> Switch Company / Sign Out.
     """
     company = request.company
@@ -118,32 +124,20 @@ def build_sidebar(request):
     if key == "transport":
         from fleet import sidebar as ind_sb
         ind_modules = ind_sb.get_modules(company, counts)
-        from shared import sidebar as shared_sb
-        shared_modules = shared_sb.get_modules(company, counts, include_hr=False, include_finance=False)
     elif key == "import":
         from imports import sidebar as ind_sb
         ind_modules = ind_sb.get_modules(company, counts)
-        from shared import sidebar as shared_sb
-        shared_modules = shared_sb.get_modules(company, counts)
     elif key == "export":
         from exports import sidebar as ind_sb
         ind_modules = ind_sb.get_modules(company, counts)
-        from shared import sidebar as shared_sb
-        shared_modules = shared_sb.get_modules(company, counts)
     elif key == "manufacturing":
         from manufacturing import sidebar as ind_sb
         ind_modules = ind_sb.get_modules(company, counts)
-        from shared import sidebar as shared_sb
-        shared_modules = shared_sb.get_modules(company, counts)
     elif key == "rental":
         from rentals import sidebar as ind_sb
         ind_modules = ind_sb.get_modules(company, counts)
-        from shared import sidebar as shared_sb
-        shared_modules = shared_sb.get_modules(company, counts)
     else:
         ind_modules, dash_url = [], "company_dashboard"
-        from shared import sidebar as shared_sb
-        shared_modules = shared_sb.get_modules(company, counts)
 
     items = [
         {"type": "link", "label": "Dashboard", "icon": "dashboard",
@@ -162,12 +156,16 @@ def build_sidebar(request):
             items.append({"type": "group", "name": sub["name"],
                           "icon": sub.get("icon", "file"),
                           "badge": sub.get("badge"), "pages": sub["pages"]})
-    items.append({"type": "section", "label": "ENTERPRISE"})
-    for mod in shared_modules:
-        for sub in mod.get("submodules", []):
-            items.append({"type": "group", "name": sub["name"],
-                          "icon": sub.get("icon", "file"),
-                          "badge": sub.get("badge"), "pages": sub["pages"]})
+    from hr import sidebar as hr_sb
+    from finance import sidebar as fin_sb
+    from administration import sidebar as adm_sb
+    from comms import sidebar as com_sb
+    from executive import sidebar as exe_sb
+    items.extend(hr_sb.get_section(company, counts))
+    items.extend(fin_sb.get_section(company, counts))
+    items.extend(adm_sb.get_section(company, counts))
+    items.extend(com_sb.get_section(company, counts))
+    items.extend(exe_sb.get_section(company, counts))
     items.append({"type": "divider"})
     items.append({"type": "link", "label": "Switch Company", "icon": "globe",
                   "url": reverse("company_hub"), "url_name": "company_hub", "bottom": True})

@@ -205,6 +205,7 @@ ENTITIES = {
             ("Payments", "payments", [("Date", "date"), ("Amount", "amount"), ("Method", "method"), ("Reference", "reference")]),
         ],
         finance=True,
+        post_save="core.integrations.sync_fleet_invoice_to_ar",
     ),
     "payments": E(
         model=m.Payment, title="Payments", singular="Payment", icon="bank",
@@ -212,27 +213,6 @@ ENTITIES = {
                       ("Method", "method"), ("Reference", "reference")],
         form_fields=["invoice", "amount", "method", "date", "reference", "received_by"],
         search=["reference", "invoice__invoice_no"],
-        finance=True,
-    ),
-    "employees": E(
-        model=m.Employee, title="Employees", singular="Employee", icon="users",
-        list_display=[("Name", "name"), ("Role", "role"), ("Phone", "phone"),
-                      ("Salary (ETB)", "salary_monthly"), ("Status", "status")],
-        form_fields=["name", "role", "phone", "hire_date", "salary_monthly", "status", "driver"],
-        search=["name", "role", "phone"],
-    ),
-    "attendance": E(
-        model=m.Attendance, title="Attendance", singular="Attendance Record", icon="clock",
-        list_display=[("Date", "date"), ("Employee", "employee"), ("Present", "present"), ("Hours", "hours")],
-        form_fields=["employee", "date", "present", "hours", "note"],
-        search=["employee__name"],
-    ),
-    "payrolls": E(
-        model=m.Payroll, title="Payroll", singular="Payroll", icon="card",
-        list_display=[("Month", "month"), ("Employee", "employee"), ("Gross (ETB)", "gross"),
-                      ("Deductions", "deductions"), ("Net (ETB)", "net"), ("Status", "status")],
-        form_fields=["employee", "month", "gross", "deductions", "status"],
-        search=["employee__name"],
         finance=True,
     ),
     "alerts": E(
@@ -263,7 +243,6 @@ NAV = [
         ("Driver Documents", "idcard", "fleet_driver-documents"),
         ("Employees", "users", "fleet_employees"),
         ("Attendance", "clock", "fleet_attendance"),
-        ("Payroll", "card", "fleet_payrolls"),
     ]),
     ("Fuel & Maintenance", None, None, [
         ("Fuel Logs", "fuel", "fleet_fuel"),
@@ -565,30 +544,6 @@ def reports(request, company_slug):
         "delivered_count": delivs.count(),
         "total_rev": total_rev, "total_cost": total_cost,
         "margin": total_rev - total_cost,
-    })
-
-
-@company_access_required
-@finance_required
-def payroll_run(request, company_slug):
-    from datetime import date
-    if request.method == "POST":
-        month_str = request.POST.get("month")  # YYYY-MM
-        y, mo = map(int, month_str.split("-"))
-        month = date(y, mo, 1)
-        created = 0
-        for emp in m.Employee.objects.filter(company=request.company, status="active"):
-            gross = emp.salary_monthly
-            deductions = (gross * Decimal("0.15")).quantize(Decimal("0.01"))
-            _, was_created = m.Payroll.objects.get_or_create(
-                company=request.company, employee=emp, month=month,
-                defaults={"gross": gross, "deductions": deductions})
-            created += 1 if was_created else 0
-        messages.success(request, f"Payroll generated for {month:%B %Y}: {created} new records.")
-        return redirect("fleet_entity_list", company_slug=company_slug, entity="payrolls")
-    return render(request, "fleet/payroll_run.html", {
-        "company": request.company, "membership": request.membership, "sidebar": _sidebar(request),
-        "employees": m.Employee.objects.filter(company=request.company, status="active"),
     })
 
 

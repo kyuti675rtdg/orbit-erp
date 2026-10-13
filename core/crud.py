@@ -106,6 +106,46 @@ def _cfg_or_404(entities, entity):
     return cfg
 
 
+def _resolve_callable(ref):
+    """Dotted 'pkg.mod.fn' string or a callable -> callable or None."""
+    if callable(ref):
+        return ref
+    if isinstance(ref, str) and "." in ref:
+        try:
+            import importlib
+            mod_name, fn_name = ref.rsplit(".", 1)
+            return getattr(importlib.import_module(mod_name), fn_name)
+        except (ImportError, AttributeError):
+            return None
+    return None
+
+
+def _run_post_save(cfg, company, obj, created, request):
+    fn = _resolve_callable(cfg.get("post_save"))
+    if not fn:
+        return
+    try:
+        fn(company, obj, created, request)
+    except Exception as exc:  # never break the user's save; surface a warning
+        messages.warning(request, f"Saved, but a follow-up step failed: {exc}")
+
+
+def available_transitions(cfg, obj, membership):
+    """Workflow transitions the current user may fire on this object."""
+    wf = cfg.get("workflow") or {}
+    status_field = wf.get("status_field", "status")
+    current = getattr(obj, status_field, None)
+    out = []
+    for t in wf.get("transitions", []):
+        if current not in t.get("from", []):
+            continue
+        roles = t.get("roles")
+        if roles and membership.role not in roles:
+            continue
+        out.append(t)
+    return out
+
+
 def _base_urls(url_ns, company_slug, entity):
     kw = {"company_slug": company_slug, "entity": entity}
     return {
@@ -196,6 +236,9 @@ def crud_detail(request, company_slug, entity, pk, *, entities, url_ns,
         "company": company, "membership": request.membership, "cfg": cfg,
         "entity": entity, "obj": obj, "fields": fields, "related": related,
         "urls": urls, "detail_panel": panel,
+        "transitions": available_transitions(cfg, obj, request.membership),
+        "action_base": reverse(f"{url_ns}_entity_list",
+                               kwargs={"company_slug": company.slug, "entity": entity}),
         "module_name": module_name,
         "readonly": cfg.get("readonly", False),
     }
@@ -242,6 +285,7 @@ def crud_create(request, company_slug, entity, *, entities, url_ns, sidebar_fn=N
         obj.save()
         form.save_m2m()
         _audit(request, "created", obj)
+        _run_post_save(cfg, request.company, obj, True, request)
         messages.success(request, f"{cfg['singular']} created.")
         return redirect(f"{url_ns}_entity_detail",
                         company_slug=request.company.slug, entity=entity, pk=obj.pk)
@@ -269,6 +313,7 @@ def crud_update(request, company_slug, entity, pk, *, entities, url_ns,
     if request.method == "POST" and form.is_valid():
         form.save()
         _audit(request, "updated", obj)
+        _run_post_save(cfg, request.company, obj, False, request)
         messages.success(request, f"{cfg['singular']} updated.")
         return redirect(f"{url_ns}_entity_detail",
                         company_slug=request.company.slug, entity=entity, pk=obj.pk)
@@ -309,6 +354,54 @@ def crud_delete(request, company_slug, entity, pk, *, entities, url_ns,
     return render(request, f"{template_dir}/entity_confirm_delete.html", ctx)
 
 
+@company_access_required
+@editor_required
+def crud_action(request, company_slug, entity, pk, action, *, entities, url_ns,
+                sidebar_fn=None, template_dir="crud", module_name=""):
+    """Fire a workflow transition (approve / reject / post / close ...)."""
+    cfg = _cfg_or_404(entities, entity)
+    wf = cfg.get("workflow") or {}
+    trans = next((t for t in wf.get("transitions", []) if t["name"] == action), None)
+    detail_kw = {"company_slug": request.company.slug, "entity": entity, "pk": pk}
+    if not trans:
+        raise Http404("Unknown action")
+    obj = get_object_or_404(cfg["model"], company=request.company, pk=pk)
+    status_field = wf.get("status_field", "status")
+    current = getattr(obj, status_field, None)
+    if current not in trans.get("from", []):
+        messages.error(request, f"Cannot '{trans['label']}' from status '{current}'.")
+        return redirect(f"{url_ns}_entity_detail", **detail_kw)
+    roles = trans.get("roles")
+    if roles and request.membership.role not in roles:
+        messages.error(request, "Your role does not permit this action.")
+        return redirect(f"{url_ns}_entity_detail", **detail_kw)
+    if request.method == "POST":
+        setattr(obj, status_field, trans["to"])
+        note_field = trans.get("note_field")
+        if note_field and request.POST.get("note"):
+            existing = getattr(obj, note_field) or ""
+            sep = "\n" if existing else ""
+            setattr(obj, note_field, f"{existing}{sep}[{trans['label']} by {request.user.username}] {request.POST['note']}")
+        obj.save()
+        _audit(request, action, obj)
+        post = _resolve_callable(trans.get("post"))
+        if post:
+            try:
+                post(request.company, obj, request)
+            except Exception as exc:
+                messages.warning(request, f"{trans['label']} saved, but a follow-up step failed: {exc}")
+        messages.success(request, f"{cfg['singular']} {trans['label'].lower()}.")
+        return redirect(f"{url_ns}_entity_detail", **detail_kw)
+    ctx = {
+        "company": request.company, "membership": request.membership, "cfg": cfg,
+        "entity": entity, "obj": obj, "trans": trans,
+        "urls": _base_urls(url_ns, request.company.slug, entity),
+        "module_name": module_name,
+    }
+    ctx.update(_ctx(request, sidebar_fn))
+    return render(request, f"{template_dir}/entity_action.html", ctx)
+
+
 def crud_urls(url_ns, entities, sidebar_fn, template_dir="crud", module_name=""):
     """URL patterns list for an app's generic entities."""
     from django.urls import path
@@ -321,4 +414,6 @@ def crud_urls(url_ns, entities, sidebar_fn, template_dir="crud", module_name="")
         path("<slug:entity>/<int:pk>/", crud_detail, kw, name=f"{url_ns}_entity_detail"),
         path("<slug:entity>/<int:pk>/edit/", crud_update, kw, name=f"{url_ns}_entity_update"),
         path("<slug:entity>/<int:pk>/delete/", crud_delete, kw, name=f"{url_ns}_entity_delete"),
+        path("<slug:entity>/<int:pk>/action/<slug:action>/", crud_action, kw,
+             name=f"{url_ns}_entity_action"),
     ]

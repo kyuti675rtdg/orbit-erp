@@ -77,6 +77,7 @@ ENTITIES = {
         detail_related=[
             ("Payments", "payments", [("Payment No", "payment_no"), ("Date", "payment_date"), ("Amount", "amount")]),
         ],
+        post_save="core.integrations.sync_rent_invoice_to_ar",
     ),
     "rent-payments": E(
         title="Rent Payments", singular="Payment", icon="bank", finance=True,

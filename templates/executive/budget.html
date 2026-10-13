@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load icons humanize %}
+{% block title %}Budget vs Actual{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'chart' 24 %}</span> Budget vs Actual{% endblock %}
+{% block crumb %}{{ company.name }} · Executive{% endblock %}
+{% block content %}
+{% for b in budgets %}
+<div class="card">
+  <h3>{{ b.name }} <span class="badge b-gray">{{ b.fiscal_year }}</span></h3>
+  <div class="sub">Budgeted vs actual (from live GL postings) · {{ b.get_status_display }}</div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Account</th><th style="text-align:right">Budgeted</th><th style="text-align:right">Actual</th><th style="text-align:right">Variance</th></tr></thead>
+  <tbody>
+    {% for r in rows %}{% if r.budget == b.name %}
+    <tr><td>{{ r.account }}</td><td style="text-align:right">{{ r.budgeted|floatformat:0|intcomma }}</td><td style="text-align:right">{{ r.actual|floatformat:0|intcomma }}</td><td style="text-align:right;color:{% if r.variance < 0 %}#ef4444{% else %}#22c55e{% endif %}">{{ r.variance|floatformat:0|intcomma }}</td></tr>
+    {% endif %}{% endfor %}
+  </tbody></table></div>
+</div>
+{% empty %}
+<div class="card"><h3>No budgets yet</h3><div class="sub">Create a budget in Finance → Budgets, then compare it against actual GL postings here.</div>
+<a class="btn btn-primary btn-sm" style="margin-top:10px" href="{% url 'finance_entity_create' company_slug=company.slug entity='budgets' %}">Create Budget</a></div>
+{% endfor %}
+{% endblock %}

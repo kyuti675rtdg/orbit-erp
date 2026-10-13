@@ -94,6 +94,11 @@ INSTALLED_APPS = [
     "exports",
     "manufacturing",
     "rentals",
+    "hr",
+    "finance",
+    "administration",
+    "comms",
+    "executive",
 ]
 
 MIDDLEWARE = [

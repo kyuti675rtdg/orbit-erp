@@ -32,6 +32,15 @@ def company_access_required(view_func):
         request.company = company
         request.membership = membership
         request.session["active_company_id"] = company.id
+        try:
+            from administration.models import LoginSession
+            sess = LoginSession.objects.filter(
+                user=request.user, company__isnull=True).order_by("-login_at").first()
+            if sess:
+                sess.company = company
+                sess.save(update_fields=["company"])
+        except Exception:
+            pass
         return view_func(request, company_slug, *args, **kwargs)
 
     return _wrapped
@@ -219,7 +228,7 @@ def company_dashboard(request, company_slug):
             {"label": "New Shipment", "icon": "truck", "url": el("imports_entity_list", "shipments")},
             {"label": "Suppliers", "icon": "users", "url": el("imports_entity_list", "suppliers")},
             {"label": "Customs", "icon": "shield", "url": el("imports_entity_list", "customs")},
-            {"label": "Employees", "icon": "users", "url": el("shared_entity_list", "employees")},
+            {"label": "Employees", "icon": "users", "url": el("hr_entity_list", "employees")},
         ]
         tables = [
             {"title": "Recent Purchase Orders", "icon": "file",
@@ -256,7 +265,7 @@ def company_dashboard(request, company_slug):
             {"label": "New Shipment", "icon": "truck", "url": el("exports_entity_list", "shipments")},
             {"label": "Buyers", "icon": "users", "url": el("exports_entity_list", "buyers")},
             {"label": "Invoices", "icon": "receipt", "url": el("exports_entity_list", "invoices")},
-            {"label": "Employees", "icon": "users", "url": el("shared_entity_list", "employees")},
+            {"label": "Employees", "icon": "users", "url": el("hr_entity_list", "employees")},
         ]
         tables = [
             {"title": "Recent Export Orders", "icon": "package",
@@ -289,7 +298,7 @@ def company_dashboard(request, company_slug):
             {"label": "QC Check", "icon": "shield", "url": el("manufacturing_entity_list", "quality-checks")},
             {"label": "Materials", "icon": "box", "url": el("manufacturing_entity_list", "raw-materials")},
             {"label": "Batches", "icon": "package", "url": el("manufacturing_entity_list", "batches")},
-            {"label": "Employees", "icon": "users", "url": el("shared_entity_list", "employees")},
+            {"label": "Employees", "icon": "users", "url": el("hr_entity_list", "employees")},
         ]
         tables = [
             {"title": "Recent Production Orders", "icon": "gear",
@@ -340,10 +349,10 @@ def company_dashboard(request, company_slug):
                   "bell", "#3b82f6", "active"),
         ]
         actions = [
-            {"label": "New Employee", "icon": "plus", "url": el("shared_entity_list", "employees")},
-            {"label": "New Bill", "icon": "receipt", "url": el("shared_entity_list", "bills")},
-            {"label": "Announcement", "icon": "bell", "url": el("shared_entity_list", "announcements")},
-            {"label": "Documents", "icon": "file", "url": el("shared_entity_list", "documents")},
+            {"label": "New Employee", "icon": "plus", "url": el("hr_entity_list", "employees")},
+            {"label": "New Bill", "icon": "receipt", "url": el("finance_entity_list", "bills")},
+            {"label": "Announcement", "icon": "bell", "url": el("comms_entity_list", "announcements")},
+            {"label": "Documents", "icon": "file", "url": el("comms_entity_list", "documents")},
         ]
 
     # shared cross-module alerts

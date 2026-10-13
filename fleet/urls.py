@@ -10,7 +10,6 @@ urlpatterns = [
     path("reports/", views.reports, name="fleet_reports"),
     path("trips/<int:pk>/action/", views.trip_action, name="fleet_trip_action"),
     path("invoices/<int:pk>/pay/", views.invoice_pay, name="fleet_invoice_pay"),
-    path("payroll/run/", views.payroll_run, name="fleet_payroll_run"),
     # friendly aliases used by the nav
     path("trips/", views.entity_list, {"entity": "trips"}, name="fleet_trips"),
     path("dispatches/", views.entity_list, {"entity": "dispatches"}, name="fleet_dispatches"),
@@ -21,9 +20,6 @@ urlpatterns = [
     path("geofences/", views.entity_list, {"entity": "geofences"}, name="fleet_geofences"),
     path("drivers/", views.entity_list, {"entity": "drivers"}, name="fleet_drivers"),
     path("driver-documents/", views.entity_list, {"entity": "driver-documents"}, name="fleet_driver-documents"),
-    path("employees/", views.entity_list, {"entity": "employees"}, name="fleet_employees"),
-    path("attendance/", views.entity_list, {"entity": "attendance"}, name="fleet_attendance"),
-    path("payrolls/", views.entity_list, {"entity": "payrolls"}, name="fleet_payrolls"),
     path("fuel/", views.entity_list, {"entity": "fuel"}, name="fleet_fuel"),
     path("services/", views.entity_list, {"entity": "services"}, name="fleet_services"),
     path("inspections/", views.entity_list, {"entity": "inspections"}, name="fleet_inspections"),

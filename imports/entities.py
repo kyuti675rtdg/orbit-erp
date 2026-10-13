@@ -120,6 +120,7 @@ ENTITIES = {
         detail_related=[
             ("Payments", "payments", [("Payment No", "payment_no"), ("Date", "payment_date"), ("Amount", "amount")]),
         ],
+        post_save="core.integrations.sync_supplier_invoice_to_bill",
     ),
     "supplier-payments": E(
         title="Supplier Payments", singular="Payment", icon="bank", finance=True,
