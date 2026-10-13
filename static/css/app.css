@@ -485,3 +485,72 @@ a:focus-visible, button:focus-visible, select:focus-visible, .theme-toggle:focus
 .offline-bar{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#7c2d12;color:#fff;
   font-size:13px;font-weight:600;text-align:center;padding:10px 14px}
 .offline-bar[hidden]{display:none}
+
+/* ===== Mobile app shell: bottom tabs + bottom sheets ===== */
+.mtabs{display:none}
+.msheet,.msheet-scrim{display:none}
+@media(max-width:900px){
+  body.hide-mtabs .mtabs{display:none}
+  .mtabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1200;
+    background:color-mix(in srgb, var(--card) 88%, transparent);
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    border-top:1px solid var(--border);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 30px rgba(0,0,0,.35)}
+  .mtab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:7px 4px 5px;border:0;background:none;color:var(--muted);
+    font-size:10.5px;font-weight:600;letter-spacing:.02em;cursor:pointer;
+    text-decoration:none;min-height:52px;justify-content:center;position:relative;font-family:inherit}
+  .mtab-ico{display:inline-flex;line-height:0}
+  .mtab.on{color:var(--orange2)}
+  .mtab.on .mtab-ico{filter:drop-shadow(0 0 8px rgba(255,140,0,.5))}
+  .mtab-badge{position:absolute;top:4px;left:calc(50% + 2px);min-width:18px;height:18px;
+    padding:0 5px;border-radius:10px;background:#ef4444;color:#fff;
+    font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .mtab-badge[hidden]{display:none}
+  /* keep page content clear of the tab bar */
+  .main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  .msheet-scrim{display:block;position:fixed;inset:0;z-index:1290;background:rgba(0,0,0,.55);
+    opacity:0;transition:opacity .22s ease;pointer-events:none}
+  .msheet-scrim.open{opacity:1;pointer-events:auto}
+  .msheet-scrim[hidden]{display:none}
+  .msheet{display:block;position:fixed;left:0;right:0;bottom:0;z-index:1300;
+    background:var(--card);border-top:1px solid var(--border);
+    border-radius:20px 20px 0 0;max-height:84dvh;
+    padding-bottom:env(safe-area-inset-bottom);
+    transform:translateY(102%);transition:transform .26s cubic-bezier(.32,.72,.35,1);
+    box-shadow:0 -16px 50px rgba(0,0,0,.5)}
+  .msheet.open{transform:translateY(0)}
+  .msheet[hidden]{display:none}
+  .msheet-grab{width:40px;height:4px;border-radius:3px;background:var(--border);
+    margin:10px auto 2px}
+  .msheet-head{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px;border-bottom:1px solid var(--border);font-size:16px}
+  .msheet-x{background:var(--bg2);border:1px solid var(--border);color:var(--text);
+    width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px}
+  .msheet-body{overflow-y:auto;max-height:calc(84dvh - 120px);padding:8px 12px 16px;
+    -webkit-overflow-scrolling:touch}
+  .msheet-coswitch{padding:8px 6px 12px}
+  .msheet-coswitch label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--muted);display:block;margin-bottom:6px}
+  .msheet-coswitch select{width:100%;padding:12px;border-radius:12px;
+    background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:15px}
+  .msheet-sec{font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--muted);padding:14px 8px 6px}
+  .msheet-link{display:flex;align-items:center;gap:14px;width:100%;
+    padding:13px 10px;border-radius:12px;color:var(--text);text-decoration:none;
+    font-size:15px;font-weight:500;background:none;border:0;cursor:pointer;
+    font-family:inherit;text-align:left}
+  .msheet-link:active{background:var(--bg2)}
+  .msheet-link .ico{color:var(--orange2);display:inline-flex;flex:none}
+  .msheet-link.sub{padding-left:30px;font-size:14px}
+  .msheet-link.danger{color:#ef4444}
+  .msheet-link.danger .ico{color:#ef4444}
+  .msheet-notif{display:block;padding:13px 10px;border-radius:12px;color:var(--text);
+    text-decoration:none;border-bottom:1px solid var(--border)}
+  .msheet-notif.unread{background:rgba(255,140,0,.08)}
+  .msheet-notif-t{font-weight:600;font-size:14px}
+  .msheet-notif-m{font-size:13px;color:var(--muted);margin-top:2px}
+  .msheet-notif-time{font-size:11px;color:var(--muted);margin-top:4px}
+  .msheet-loading{padding:26px;text-align:center;color:var(--muted)}
+}

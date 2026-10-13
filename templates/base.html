@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>{% block title %}Orbit ERP{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -298,6 +298,162 @@ document.addEventListener('keydown', function(e){
 @media(max-width:640px){#pwaBar{bottom:12px;font-size:12.5px}}
 </style>
 {% block scripts %}{% endblock %}
+<!-- ===== Mobile app shell: bottom tabs + sheets (mobile only via CSS) ===== -->
+<nav class="mtabs" id="mtabs" aria-label="Primary">
+  <a class="mtab" data-mtab="hub" href="{% url 'company_hub' %}">
+    <span class="mtab-ico">{% icon 'home' 22 %}</span><span class="mtab-lbl">Hub</span>
+  </a>
+  <a class="mtab" data-mtab="chat" href="{% if active_company %}{% url 'orbitchat_home' company_slug=active_company.slug %}{% elif my_companies %}/c/{{ my_companies.0.company.slug }}/chat/{% else %}{% url 'company_hub' %}{% endif %}">
+    <span class="mtab-ico">{% icon 'chat' 22 %}</span><span class="mtab-lbl">Chat</span>
+    <span class="mtab-badge" id="mtabChatBadge" hidden></span>
+  </a>
+  <button class="mtab" data-mtab="alerts" id="mtabAlerts" type="button" aria-label="Notifications">
+    <span class="mtab-ico">{% icon 'bell' 22 %}</span><span class="mtab-lbl">Alerts</span>
+    <span class="mtab-badge" id="mtabAlertBadge" hidden></span>
+  </button>
+  <button class="mtab" data-mtab="more" id="mtabMore" type="button" aria-label="More menu">
+    <span class="mtab-ico">{% icon 'menu' 22 %}</span><span class="mtab-lbl">More</span>
+  </button>
+</nav>
+
+<div class="msheet-scrim" id="msheetScrim" hidden></div>
+<section class="msheet" id="msheet" role="dialog" aria-label="Menu" hidden>
+  <div class="msheet-grab"></div>
+  <div class="msheet-head"><strong>Menu</strong><button class="msheet-x" data-close-sheet aria-label="Close">✕</button></div>
+  <div class="msheet-body">
+    {% if my_companies %}
+    <div class="msheet-coswitch">
+      <label>Company</label>
+      <select onchange="const s=this.value; if(s) location.href='/c/'+s+'/'" aria-label="Switch company">
+        {% for mc in my_companies %}
+        <option value="{{ mc.company.slug }}" {% if active_company and mc.company.id == active_company.id %}selected{% endif %}>{{ mc.company.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="msheet-nav">
+      {% if sidebar %}
+        {% for it in sidebar %}
+          {% if it.type == "link" %}
+            <a class="msheet-link" href="{{ it.url }}"><span class="ico">{% icon it.icon 20 %}</span><span>{{ it.label }}</span>{% if it.badge %}<span class="nav-badge">{{ it.badge }}</span>{% endif %}</a>
+          {% elif it.type == "section" %}
+            <div class="msheet-sec">{{ it.label }}</div>
+          {% elif it.type == "group" %}
+            <div class="msheet-sec">{{ it.name }}</div>
+            {% for p in it.pages %}
+            <a class="msheet-link sub" href="{{ p.url }}"><span class="ico">{% icon p.icon 18 %}</span><span>{{ p.label }}</span></a>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <a class="msheet-link" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' 20 %}</span><span>My Companies</span></a>
+        {% if is_management %}
+        <a class="msheet-link" href="{% url 'monitoring_overview' %}"><span class="ico">{% icon 'chart' 20 %}</span><span>Business Monitoring</span></a>
+        {% endif %}
+        <a class="msheet-link" href="{% url 'company_create' %}"><span class="ico">{% icon 'plus' 20 %}</span><span>Register Company</span></a>
+      {% endif %}
+      <a class="msheet-link" href="{% url 'push_preferences' %}"><span class="ico">{% icon 'bell' 20 %}</span><span>Notification Settings</span></a>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="msheet-link danger" type="submit"><span class="ico">{% icon 'logout' 20 %}</span><span>Sign Out</span></button></form>
+    </div>
+  </div>
+</section>
+
+<div class="msheet-scrim" id="asheetScrim" hidden></div>
+<section class="msheet" id="asheet" role="dialog" aria-label="Notifications" hidden>
+  <div class="msheet-grab"></div>
+  <div class="msheet-head"><strong>Notifications</strong><button class="msheet-x" data-close-sheet aria-label="Close">✕</button></div>
+  <div class="msheet-body" id="asheetBody"><div class="msheet-loading">Loading…</div></div>
+</section>
+<script>
+/* ---- Mobile app shell: tabs, sheets, Android back ---- */
+(function(){
+  var isMobile = window.matchMedia('(max-width: 900px)');
+  var tabs = document.getElementById('mtabs');
+  if (!tabs) return;
+  // active tab highlight
+  var path = location.pathname;
+  var tab = 'hub';
+  if (/\/chat\/?/.test(path)) tab = 'chat';
+  var el = tabs.querySelector('[data-mtab="' + tab + '"]');
+  if (el) el.classList.add('on');
+  // chat unread badge (mobile only, cheap rooms poll)
+  function chatBadge(){
+    if (!isMobile.matches) return;
+    var slug = '{{ active_company.slug|default:"" }}' || '{{ my_companies.0.company.slug|default:"" }}';
+    if (!slug) return;
+    fetch('/c/' + slug + '/chat/api/rooms/').then(function(r){ return r.json(); }).then(function(d){
+      var n = (d.rooms || []).reduce(function(a, r){ return a + (r.unread || 0); }, 0);
+      var b = document.getElementById('mtabChatBadge');
+      b.hidden = !n; b.textContent = n > 99 ? '99+' : n;
+    }).catch(function(){});
+  }
+  chatBadge(); setInterval(chatBadge, 60000);
+  // sheets with Android back-button support
+  var sheets = {more: ['msheet', 'msheetScrim'], alerts: ['asheet', 'asheetScrim']};
+  var openName = null, pushed = false;
+  function openSheet(name){
+    closeSheets(true);
+    var s = document.getElementById(sheets[name][0]), sc = document.getElementById(sheets[name][1]);
+    s.hidden = false; sc.hidden = false;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      s.classList.add('open'); sc.classList.add('open');
+    }); });
+    openName = name;
+    try { history.pushState({orbitSheet: name}, ''); pushed = true; } catch(e){}
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSheets(silent){
+    Object.keys(sheets).forEach(function(k){
+      var s = document.getElementById(sheets[k][0]), sc = document.getElementById(sheets[k][1]);
+      s.classList.remove('open'); sc.classList.remove('open');
+      if (silent) { s.hidden = true; sc.hidden = true; }
+      else { setTimeout(function(){ s.hidden = true; sc.hidden = true; }, 220); }
+    });
+    if (openName && pushed && !silent) { try { history.back(); } catch(e){} }
+    openName = null; pushed = false;
+    document.body.style.overflow = '';
+  }
+  window.addEventListener('popstate', function(e){
+    if (openName) { closeSheets(true); }
+    else if (e.state && e.state.orbitSheet) { openSheet(e.state.orbitSheet); }
+  });
+  document.getElementById('mtabMore').addEventListener('click', function(){ openSheet('more'); });
+  document.querySelectorAll('[data-close-sheet]').forEach(function(b){
+    b.addEventListener('click', function(){ closeSheets(false); });
+  });
+  document.querySelectorAll('.msheet-scrim').forEach(function(s){
+    s.addEventListener('click', function(){ closeSheets(false); });
+  });
+  // alerts sheet: reuse notification feed
+  var notifBtn = document.getElementById('notifBtn');
+  document.getElementById('mtabAlerts').addEventListener('click', function(){
+    var body = document.getElementById('asheetBody');
+    body.innerHTML = '<div class="msheet-loading">Loading…</div>';
+    openSheet('alerts');
+    if (!notifBtn) { body.innerHTML = '<div class="msheet-loading">No company selected.</div>'; return; }
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    fetch(notifBtn.dataset.feed).then(function(r){ return r.json(); }).then(function(d){
+      body.innerHTML = d.items.length ? d.items.map(function(n){
+        return '<a class="msheet-notif' + (n.is_read ? '' : ' unread') + '" href="' + esc(n.link || '#') + '">' +
+          '<div class="msheet-notif-t">' + esc(n.title) + '</div>' +
+          (n.message ? '<div class="msheet-notif-m">' + esc(n.message) + '</div>' : '') +
+          '<div class="msheet-notif-time">' + esc(n.time) + '</div></a>';
+      }).join('') : '<div class="msheet-loading">No notifications.</div>';
+      fetch(notifBtn.dataset.read, {method: 'POST',
+        headers: {'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''}});
+      var dot = document.getElementById('notifDot'); if (dot) dot.hidden = true;
+      var ab = document.getElementById('mtabAlertBadge'); if (ab) ab.hidden = true;
+    }).catch(function(){ body.innerHTML = '<div class="msheet-loading">Could not load notifications.</div>'; });
+  });
+  // alerts tab badge mirrors the topbar dot
+  var badgeTimer = setInterval(function(){
+    var dot = document.getElementById('notifDot'), ab = document.getElementById('mtabAlertBadge');
+    if (dot && ab && !dot.hidden && dot.textContent) {
+      ab.hidden = false; ab.textContent = dot.textContent;
+    }
+  }, 3000);
+})();
+</script>
 <div id="offlineBar" class="offline-bar" hidden>No internet connection — you are viewing cached content. Changes will not be saved until you are back online.</div>
 <script>
 (function(){
