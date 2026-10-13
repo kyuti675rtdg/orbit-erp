@@ -63,6 +63,45 @@ def log_event(company, req, actor, action, notes=""):
     )
 
 
+def _chat_approvals_room(company):
+    """Dedicated approver-only room for request workflow events (created on demand)."""
+    try:
+        from orbitchat.models import ChatRoom, ChatMember
+        from django.contrib.auth.models import User
+    except Exception:
+        return None
+    room, created = ChatRoom.objects.get_or_create(
+        company=company, room_type="group", ref_key="__approvals__",
+        defaults={"name": "Approvals", "description": "Request approvals workflow",
+                  "created_by": None})
+    approvers = approver_users(company)
+    for u in approvers:
+        ChatMember.objects.get_or_create(room=room, user=u,
+                                         defaults={"role": "admin"})
+    return room
+
+
+def _post_to_approvals_room(company, title, message, req):
+    room = _chat_approvals_room(company)
+    if not room:
+        return
+    try:
+        from orbitchat.models import ChatMessage
+        from django.contrib.auth.models import User
+        sender = User.objects.filter(is_superuser=True).first()
+        if not sender:
+            return
+        link = f"/c/{company.slug}/req/requests/{req.pk}/"
+        ChatMessage.objects.create(
+            company=company, room=room, sender=sender,
+            body=f"{title}\n{message}\nOpen: {link}",
+            record_link=f"req:Request:{req.pk}",
+            record_label=f"{req.ref_no} — {req.title}")
+        room.save(update_fields=["updated_at"])
+    except Exception:
+        pass
+
+
 def on_submitted(company, req, actor):
     approver = pick_approver(company, req.requester)
     req.current_approver = approver
@@ -77,6 +116,10 @@ def on_submitted(company, req, actor):
             _notify(company, user, f"New request: {req.ref_no}",
                     f"{req.requester.username} submitted '{req.title}' "
                     f"({req.get_request_type_display()}).", link=link)
+    _post_to_approvals_room(
+        company, f"New request: {req.ref_no}",
+        f"{req.requester.username} submitted '{req.title}' "
+        f"({req.get_request_type_display()}).", req)
 
 
 def on_decided(company, req, actor, action):
@@ -87,6 +130,9 @@ def on_decided(company, req, actor, action):
     link = f"/c/{company.slug}/req/requests/{req.pk}/"
     _notify(company, req.requester, f"Request {action}: {req.ref_no}",
             f"Your request '{req.title}' was {action}.", link=link)
+    _post_to_approvals_room(
+        company, f"Request {action}: {req.ref_no}",
+        f"'{req.title}' was {action} by {actor.username}.", req)
 
 
 def on_returned(company, req, actor):

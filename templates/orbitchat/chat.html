@@ -54,6 +54,8 @@
           <button id="ocHMSearch"><span class="ico">{% icon 'search' 17 %}</span>Search in chat</button>
           <button id="ocHMBell"><span class="ico">{% icon 'bell' 17 %}</span>Message alerts</button>
           <button id="ocHMShare"><span class="ico">{% icon 'share' 17 %}</span>Share chat</button>
+          <button id="ocHMMute"><span class="ico">{% icon 'belloff' 17 %}</span><span id="ocHMMuteT">Mute conversation</span></button>
+          <button id="ocHMPin"><span class="ico">{% icon 'pushpin' 17 %}</span><span id="ocHMPinT">Pin chat</span></button>
         </div>
       </header>
       <div class="oc-findbar hidden" id="ocFindBar">
@@ -63,12 +65,21 @@
         <button class="icon-btn" id="ocFindDown" title="Next">{% icon 'down' 16 %}</button>
         <button class="icon-btn" id="ocFindX">{% icon 'x' 16 %}</button>
       </div>
+      <div class="oc-pinbar hidden" id="ocPinBar">
+        <span class="oc-pin-ico">{% icon 'pushpin' 16 %}</span>
+        <div class="oc-pin-t"><strong>Pinned message</strong><span id="ocPinText"></span></div>
+        <button class="icon-btn" id="ocPinX" aria-label="Dismiss">{% icon 'x' 15 %}</button>
+      </div>
       <div class="oc-msgs" id="ocMsgs"></div>
       <button class="oc-tobottom hidden" id="ocToBottom">{% icon 'down' 18 %}<span id="ocNewCount"></span></button>
       <div class="oc-typingbar hidden" id="ocTypingBar"><span class="oc-tdots"><i></i><i></i><i></i></span><span id="ocTypingWho"></span></div>
       <div class="oc-replybar hidden" id="ocReplyBar">
         <div class="oc-replyinfo"><strong id="ocReplyWho"></strong><span id="ocReplyText"></span></div>
         <button id="ocReplyX" class="icon-btn" aria-label="Cancel reply">{% icon 'x' 16 %}</button>
+      </div>
+      <div class="oc-replybar hidden" id="ocEditBar">
+        <div class="oc-replyinfo"><strong>Editing message</strong><span id="ocEditText"></span></div>
+        <button id="ocEditX" class="icon-btn" aria-label="Cancel edit">{% icon 'x' 16 %}</button>
       </div>
       <div class="oc-filebar hidden" id="ocFileBar">
         <div class="oc-replyinfo"><strong id="ocFileName"></strong><span id="ocFileSize"></span></div>
@@ -100,8 +111,20 @@
 <span class="hidden" id="ric-sad">{% icon 'frown' 13 %}</span>
 <!-- reaction picker -->
 <div class="oc-reactpick hidden" id="ocReactPick"></div>
+<span class="hidden" id="ric-pushpin">{% icon 'pushpin' 13 %}</span>
+<span class="hidden" id="ric-belloff">{% icon 'belloff' 13 %}</span>
 <!-- message context menu -->
 <div class="oc-menu hidden" id="ocMenu"></div>
+<!-- room context menu -->
+<div class="oc-menu hidden" id="ocRoomMenu"></div>
+<!-- forward picker -->
+<div class="oc-modal hidden" id="ocFwd">
+  <div class="oc-modal-card">
+    <h3>Forward to…</h3>
+    <div class="oc-fwd-list" id="ocFwdList"></div>
+    <button class="btn btn-ghost" id="ocFwdX">Cancel</button>
+  </div>
+</div>
 
 <div class="oc-modal hidden" id="ocModal">
   <div class="oc-modal-card">
@@ -153,6 +176,13 @@ let lastPoll = null, replyTo = null, pollTimer = null, hbTimer = null;
 let unreadAnchorId = null, typingThrottle = 0, notifOn = false;
 let findMatches = [], findIdx = -1, oldestLoaded = null, loadingMore = false;
 let atBottom = true, pendingNew = 0;
+let editMsg = null, pinnedMsgs = [], fwdMsg = null;
+
+/* ---- message drafts (survive conversation switches) ---- */
+const draftKey = id => `oc_draft_${SLUG}_${id}`;
+function saveDraft(){ if(activeRoom && !editMsg){ try{ localStorage.setItem(draftKey(activeRoom.id), $("ocInput").value); }catch(e){} } }
+function restoreDraft(id){ let v=""; try{ v = localStorage.getItem(draftKey(id))||""; }catch(e){} $("ocInput").value = v; autosize(); }
+function clearDraft(id){ try{ localStorage.removeItem(draftKey(id)); }catch(e){} }
 
 const esc = s => String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dayLabel = iso => { const d = new Date(iso), now = new Date(), y = new Date(now - 864e5);
@@ -192,13 +222,19 @@ function renderRooms(){
     const lastTxt = typing ? `<span class="oc-typing-txt">typing…</span>`
       : (r.last_message ? esc(r.last_message.sender_name+": "+r.last_message.body).slice(0,60) : "<i>No messages yet</i>");
     const el = document.createElement("div");
-    el.className = "oc-room" + (activeRoom && activeRoom.id===r.id ? " active" : "");
+    el.className = "oc-room" + (activeRoom && activeRoom.id===r.id ? " active" : "") + (r.muted ? " muted-room" : "");
+    const flags = (r.pinned_chat?`<span title="Pinned" class="oc-flag">${ricIcon("pushpin")}</span>`:"") + (r.muted?`<span title="Muted" class="oc-flag">${ricIcon("belloff")}</span>`:"");
     el.innerHTML = avatarHTML(r.name, r.type==="dm" ? r.peer_online : undefined, r.type==="dm" ? r.peer_avatar : "") +
-      `<div class="oc-room-t"><div class="oc-room-top"><span class="oc-room-name">${esc(r.name)}</span>`+
+      `<div class="oc-room-t"><div class="oc-room-top"><span class="oc-room-name">${esc(r.name)}</span><span class="oc-room-flags">${flags}</span>`+
       `<span class="oc-room-time">${r.last_message?timeFmt(r.last_message.at):""}</span></div>`+
       `<div class="oc-room-bot"><span class="oc-room-last">${lastTxt}</span>`+
-      (r.unread?`<span class="oc-badge">${r.unread}</span>`:"") + `</div></div>`;
+      (r.unread?`<span class="oc-badge${r.muted?" muted-b":""}">${r.unread}</span>`:"") + `</div></div>`;
     el.onclick = () => openRoom(r.id);
+    el.oncontextmenu = (e) => { e.preventDefault(); showRoomMenu(e.clientX, e.clientY, r); };
+    let lpTimer = null;
+    el.addEventListener("touchstart", ()=>{ lpTimer = setTimeout(()=>showRoomMenu(innerWidth/2, 200, r), 550); }, {passive:true});
+    el.addEventListener("touchend", ()=>{ clearTimeout(lpTimer); }, {passive:true});
+    el.addEventListener("touchmove", ()=>{ clearTimeout(lpTimer); }, {passive:true});
     list.appendChild(el);
   });
   $("ocTotal").textContent = total ? total : "";
@@ -233,8 +269,11 @@ function ticks(m){
 const isImg = url => /\.(png|jpe?g|gif|webp)$/i.test(url||"");
 function msgInner(m){
   let h = "";
+  if (m.forwarded) h += `<div class="oc-fwdlbl">Forwarded</div>`;
   if (m.reply_to) h += `<div class="oc-quote" data-jump="${m.reply_to.id}"><strong>${esc(m.reply_to.sender_name)}</strong><span>${esc(m.reply_to.body)}</span></div>`;
-  if (m.record) h += `<div class="oc-record">${esc(m.record.label||"Record")}</div>`;
+  if (m.record) h += m.record_url
+    ? `<a class="oc-record" href="${esc(m.record_url)}">${esc(m.record.label||"Record")} →</a>`
+    : `<div class="oc-record">${esc(m.record.label||"Record")}</div>`;
   if (m.attachment) h += isImg(m.attachment)
     ? `<a href="${esc(m.attachment)}" target="_blank"><img class="oc-img" src="${esc(m.attachment)}" loading="lazy" alt="attachment"></a>`
     : `<a class="oc-file" href="${esc(m.attachment)}" target="_blank">${esc(m.attachment_name||"Attachment")}</a>`;
@@ -260,6 +299,10 @@ function reactIcon(k){
   const el = document.getElementById("ric-" + k);
   return el ? el.innerHTML : k;
 }
+function ricIcon(k){
+  const el = document.getElementById("ric-" + k);
+  return el ? el.innerHTML : "";
+}
 function renderMessages(){
   const box = $("ocMsgs"); box.innerHTML = "";
   let lastDay = "", prev = null;
@@ -278,18 +321,20 @@ function renderMessages(){
 }
 async function openRoom(id){
   const r = rooms.find(x=>x.id===id); if(!r) return;
+  if (activeRoom && activeRoom.id !== id) saveDraft();
   unreadAnchorId = (r.unread && messages.length) ? null : null;
-  activeRoom = r; replyTo = null; updateReplyBar(); oldestLoaded = null;
+  activeRoom = r; replyTo = null; editMsg = null; updateReplyBar(); updateEditBar(); oldestLoaded = null;
+  restoreDraft(id);
   $("ocEmpty").classList.add("hidden"); $("ocConvo").classList.remove("hidden");
   if (window.innerWidth < 860) { $("ocSide").classList.add("hiddenm"); $("ocMain").classList.add("showm"); }
   $("ocCName").textContent = r.name;
   const cav = $("ocCAvatar");
   if (r.type === "dm" && r.peer_avatar) { cav.innerHTML = `<img src="${esc(r.peer_avatar)}" alt="">`; cav.classList.add("has-img"); }
   else { cav.textContent = (r.name||"?")[0].toUpperCase(); cav.classList.remove("has-img"); }
-  updateSub(); renderMembers(); hideMenu(); hideReactPick();
+  updateSub(); renderMembers(); hideMenu(); hideReactPick(); syncHeaderChatToggles();
   // capture unread anchor BEFORE marking read
   const j0 = await api(`/rooms/${r.id}/`);
-  messages = j0.messages;
+  messages = j0.messages; pinnedMsgs = j0.pinned||[]; updatePinBar();
   if (r.unread > 0 && messages.length)
     unreadAnchorId = messages[Math.max(0, messages.length - r.unread)].id;
   atBottom = true; renderMessages();
@@ -298,8 +343,9 @@ async function openRoom(id){
   if (window.innerWidth < 860) { document.body.classList.add("hide-mtabs"); document.body.style.overflow = "hidden"; }
 }
 function closeRoom(push){
+  if (activeRoom) saveDraft();
   $("ocSide").classList.remove("hiddenm"); $("ocMain").classList.remove("showm");
-  activeRoom = null;
+  activeRoom = null; editMsg = null; updateEditBar(); pinnedMsgs = [];
   document.body.classList.remove("hide-mtabs");
   document.body.style.overflow = "";
   if (push === true) { try { history.back(); } catch(e){} }
@@ -313,11 +359,14 @@ window.addEventListener("popstate", (e) => {
 });
 async function openRoomSilent(id){
   const r = rooms.find(x=>x.id===id); if(!r) return;
+  if (activeRoom && activeRoom.id !== id) saveDraft();
   activeRoom = r;
+  restoreDraft(id);
   $("ocEmpty").classList.add("hidden"); $("ocConvo").classList.remove("hidden");
   if (window.innerWidth < 860) { $("ocSide").classList.add("hiddenm"); $("ocMain").classList.add("showm"); document.body.classList.add("hide-mtabs"); document.body.style.overflow = "hidden"; }
   $("ocCName").textContent = r.name; updateSub(); renderMembers();
   const j0 = await api(`/rooms/${r.id}/`); messages = j0.messages;
+  pinnedMsgs = j0.pinned||[]; updatePinBar();
   atBottom = true; renderMessages();
 }
 function updateSub(){
@@ -344,25 +393,125 @@ function updateTypingBar(){
 /* ---- message actions: context menu + reaction picker ---- */
 function hideMenu(){ $("ocMenu").classList.add("hidden"); }
 function hideReactPick(){ $("ocReactPick").classList.add("hidden"); }
+function hideRoomMenu(){ $("ocRoomMenu").classList.add("hidden"); }
+function showRoomMenu(x, y, r){
+  const menu = $("ocRoomMenu");
+  menu.innerHTML =
+    `<button data-a="open">Open chat</button>`+
+    `<button data-a="pin">${r.pinned_chat?"Unpin chat":"Pin chat"}</button>`+
+    `<button data-a="mute">${r.muted?"Unmute":"Mute"} conversation</button>`;
+  menu.classList.remove("hidden");
+  const mw = 200, mh = menu.children.length*38+8;
+  menu.style.left = Math.min(x, innerWidth-mw-8)+"px";
+  menu.style.top = Math.min(y, innerHeight-mh-8)+"px";
+  menu.onclick = async e => {
+    const a = e.target.dataset.a; hideRoomMenu(); if(!a) return;
+    if (a==="open") openRoom(r.id);
+    else if (a==="pin" || a==="mute") {
+      const j = await post(`/rooms/${r.id}/${a}/`).catch(e=>alert(e.message));
+      if (j) { await loadRooms(true); }
+    }
+  };
+}
+
+/* ---- header menu: mute / pin chat for the open conversation ---- */
+function syncHeaderChatToggles(){
+  if (!activeRoom) return;
+  $("ocHMMuteT").textContent = activeRoom.muted ? "Unmute conversation" : "Mute conversation";
+  $("ocHMPinT").textContent = activeRoom.pinned_chat ? "Unpin chat" : "Pin chat";
+}
 function showMenu(x, y, m){
   const menu = $("ocMenu"), mine = m.sender_username===ME;
+  const canMod = mine || activeRoom.is_admin;
   menu.innerHTML =
     `<button data-a="reply">Reply</button>`+
+    `<button data-a="fwd">Forward</button>`+
+    (mine?`<button data-a="edit">Edit</button>`:"")+
+    (canMod?`<button data-a="pin">${m.is_pinned?"Unpin":"Pin"} message</button>`:"")+
     `<button data-a="copy">Copy text</button>`+
-    (mine||activeRoom.is_admin?`<button data-a="del" class="danger">Delete</button>`:"");
+    (canMod?`<button data-a="del" class="danger">Delete</button>`:"");
   menu.classList.remove("hidden");
   const mw = 170, mh = menu.children.length*38+8;
   menu.style.left = Math.min(x, innerWidth-mw-8)+"px";
   menu.style.top = Math.min(y, innerHeight-mh-8)+"px";
   menu.onclick = async e => {
     const a = e.target.dataset.a; hideMenu(); if(!a) return;
-    if (a==="reply") { replyTo = m; updateReplyBar(); $("ocInput").focus(); }
+    if (a==="reply") { replyTo = m; editMsg = null; updateEditBar(); updateReplyBar(); restoreDraftKeep(); $("ocInput").focus(); }
+    else if (a==="fwd") openFwd(m);
+    else if (a==="edit" && mine) startEdit(m);
+    else if (a==="pin") {
+      const j = await post(`/messages/${m.id}/pin/`).catch(e=>alert(e.message));
+      if (j) { m.is_pinned = j.is_pinned; await refreshPinned(); renderMessages(); }
+    }
     else if (a==="copy" && m.body) { try{ await navigator.clipboard.writeText(m.body); }catch(_){} }
     else if (a==="del" && confirm("Delete this message?")) {
       await post(`/messages/${m.id}/delete/`);
       messages = messages.filter(x=>x.id!==m.id); renderMessages();
     }
   };
+}
+/* reply should not wipe an in-progress draft */
+function restoreDraftKeep(){ /* draft stays in the box; reply only adds the bar */ }
+
+/* ---- edit mode ---- */
+function updateEditBar(){
+  const bar = $("ocEditBar");
+  if (editMsg) { bar.classList.remove("hidden"); $("ocEditText").textContent = (editMsg.body||"").slice(0,90); }
+  else bar.classList.add("hidden");
+}
+function startEdit(m){
+  saveDraft();  /* stash the in-progress draft before entering edit mode */
+  editMsg = m; replyTo = null; updateReplyBar(); updateEditBar();
+  $("ocInput").value = m.body||""; autosize(); $("ocInput").focus();
+}
+function cancelEdit(){ editMsg = null; updateEditBar(); restoreDraft(activeRoom.id); }
+
+/* ---- forward ---- */
+function openFwd(m){
+  fwdMsg = m;
+  const list = $("ocFwdList");
+  list.innerHTML = rooms.filter(r=>!activeRoom||r.id!==activeRoom.id).map(r =>
+    `<button class="oc-fwd-item" data-id="${r.id}">${avatarHTML(r.name, undefined, "")}<span>${esc(r.name)}</span></button>`).join("")
+    || `<div style="padding:12px;color:var(--muted)">No other chats yet.</div>`;
+  $("ocFwd").classList.remove("hidden");
+}
+async function doForward(roomId){
+  if (!fwdMsg) return;
+  $("ocFwd").classList.add("hidden");
+  try {
+    const j = await post(`/messages/${fwdMsg.id}/forward/`, {room_id: roomId});
+    toast("Message forwarded");
+    if (confirm("Open the conversation?")) openRoom(j.room_id); else loadRooms(true);
+  } catch(e){ alert(e.message); }
+  fwdMsg = null;
+}
+function toast(t){
+  const d = document.createElement("div");
+  d.textContent = t;
+  d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:20px;z-index:200;font-size:14px";
+  document.body.appendChild(d); setTimeout(()=>d.remove(), 2200);
+}
+
+/* ---- pinned messages bar ---- */
+async function refreshPinned(){
+  if (!activeRoom) return;
+  try { const j = await api(`/rooms/${activeRoom.id}/`); pinnedMsgs = j.pinned||[]; }
+  catch(e){ pinnedMsgs = []; }
+  updatePinBar();
+}
+function updatePinBar(){
+  const bar = $("ocPinBar");
+  if (pinnedMsgs.length) {
+    bar.classList.remove("hidden");
+    const p = pinnedMsgs[0];
+    $("ocPinText").textContent = `${p.sender_name}: ${(p.body||"[file]").slice(0,80)}`;
+    bar.onclick = () => jumpToMsg(p.id);
+  } else { bar.classList.add("hidden"); bar.onclick = null; }
+}
+function jumpToMsg(id){
+  const el = document.querySelector(`.oc-msg[data-mid="${id}"]`);
+  if (el) { el.scrollIntoView({block:"center", behavior:"smooth"});
+    el.style.boxShadow = "0 0 0 2px var(--orange)"; setTimeout(()=>el.style.boxShadow="", 1600); }
 }
 function showReactPick(x, y, m){
   const pick = $("ocReactPick");
@@ -390,6 +539,17 @@ function updateFileBar(){
   } else bar.classList.add("hidden");
 }
 async function sendMsg(){
+  if (editMsg) {  /* ---- edit mode: save instead of send ---- */
+    const body = $("ocInput").value.trim();
+    if (!body || !activeRoom) return;
+    try {
+      const j = await post(`/messages/${editMsg.id}/edit/`, {body});
+      const i = messages.findIndex(x=>x.id===j.message.id);
+      if (i>=0) { messages[i] = j.message; renderMessages(); }
+      editMsg = null; updateEditBar(); restoreDraft(activeRoom.id);
+    } catch(e){ alert(e.message); }
+    return;
+  }
   const body = $("ocInput").value.trim(), file = $("ocFile").files[0];
   if ((!body && !file) || !activeRoom) return;
   const fd = new FormData();
@@ -398,6 +558,7 @@ async function sendMsg(){
   if (file) fd.append("file", file);
   $("ocInput").value=""; autosize(); $("ocFile").value=""; updateFileBar();
   replyTo = null; updateReplyBar();
+  clearDraft(activeRoom.id);
   try { const j = await post(`/rooms/${activeRoom.id}/send/`, fd);
     messages.push(j.message); atBottom = true; pendingNew = 0; updateToBottom();
     renderMessages(); loadRooms(true);
@@ -520,11 +681,17 @@ function notifyTyping(){
 
 document.addEventListener("DOMContentLoaded", async () => {
   const input = $("ocInput");
-  input.addEventListener("input", ()=>{ autosize(); notifyTyping(); });
+  input.addEventListener("input", ()=>{ autosize(); notifyTyping(); saveDraft(); });
   input.addEventListener("keydown", e => {
     if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
-    if (e.key==="Escape") { replyTo=null; updateReplyBar(); hideMenu(); hideReactPick(); }
+    if (e.key==="Escape") { replyTo=null; updateReplyBar(); editMsg=null; updateEditBar(); hideMenu(); hideReactPick(); hideRoomMenu(); }
   });
+  $("ocEditX").onclick = cancelEdit;
+  $("ocPinX").onclick = (e) => { e.stopPropagation(); $("ocPinBar").classList.add("hidden"); };
+  $("ocFwdX").onclick = () => { $("ocFwd").classList.add("hidden"); fwdMsg = null; };
+  $("ocFwdList").onclick = (e) => {
+    const b = e.target.closest(".oc-fwd-item"); if (b) doForward(parseInt(b.dataset.id, 10));
+  };
   $("ocSend").onclick = sendMsg;
   /* header overflow menu (mobile secondary actions) */
   $("ocMoreBtn").onclick = (e) => { e.stopPropagation(); $("ocHMenu").classList.toggle("open"); };
@@ -535,6 +702,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("ocHMSearch").onclick = () => { $("ocHMenu").classList.remove("open"); $("ocSearchBtn").click(); };
   $("ocHMBell").onclick = () => { $("ocHMenu").classList.remove("open"); $("ocBellBtn").click(); };
   $("ocHMShare").onclick = () => { $("ocHMenu").classList.remove("open"); $("ocShareBtn").click(); };
+  $("ocHMMute").onclick = async () => {
+    $("ocHMenu").classList.remove("open");
+    if (!activeRoom) return;
+    const j = await post(`/rooms/${activeRoom.id}/mute/`).catch(e=>alert(e.message));
+    if (j) { activeRoom.muted = j.muted; syncHeaderChatToggles(); renderRooms(); toast(j.muted?"Conversation muted":"Conversation unmuted"); }
+  };
+  $("ocHMPin").onclick = async () => {
+    $("ocHMenu").classList.remove("open");
+    if (!activeRoom) return;
+    const j = await post(`/rooms/${activeRoom.id}/pin/`).catch(e=>alert(e.message));
+    if (j) { activeRoom.pinned_chat = j.pinned; syncHeaderChatToggles(); loadRooms(true); toast(j.pinned?"Chat pinned to top":"Chat unpinned"); }
+  };
   $("ocFile").addEventListener("change", updateFileBar);
   $("ocCamera").addEventListener("change", function(){
     if (this.files[0]) {
@@ -612,6 +791,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("click", e => {
     if (!e.target.closest("#ocMenu") && !e.target.closest(".oc-msg")) hideMenu();
     if (!e.target.closest("#ocReactPick") && !e.target.closest(".oc-react")) hideReactPick();
+    if (!e.target.closest("#ocRoomMenu") && !e.target.closest(".oc-room")) hideRoomMenu();
   });
 
   /* tabs + search */
@@ -799,6 +979,27 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 12px;font-size:13.5px;color:var(--text);cursor:pointer;border-radius:7px}
 .oc-menu button:hover{background:var(--bg)}
 .oc-menu button.danger{color:#e74c3c}
+/* pinned-message bar */
+.oc-pinbar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,140,0,.08);
+  border-bottom:1px solid var(--border);cursor:pointer;flex:none}
+.oc-pin-ico{color:var(--orange);display:flex;flex:none}
+.oc-pin-t{flex:1;min-width:0}
+.oc-pin-t strong{display:block;font-size:12px;color:var(--orange)}
+.oc-pin-t span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* forwarded label + edited label */
+.oc-fwdlbl{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:3px}
+/* clickable record card */
+a.oc-record{text-decoration:none;display:inline-block}
+/* forward picker */
+.oc-fwd-list{max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.oc-fwd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;border:0;background:none;width:100%;text-align:left;color:var(--text);font-size:14px}
+.oc-fwd-item:hover{background:var(--bg)}
+/* room list extras */
+.oc-room-flags{display:inline-flex;gap:4px;align-items:center;margin-left:6px;color:var(--muted)}
+.oc-room.muted-room .oc-room-name{color:var(--muted)}
+.oc-badge.muted-b{background:var(--border);color:var(--muted)}
+.oc-flag{display:inline-flex;color:var(--muted)}
+.oc-flag svg{width:13px;height:13px}
 .oc-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60}
 .oc-modal-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;width:min(420px,92vw);display:flex;flex-direction:column;gap:10px}
 .oc-modal-card h3{margin:0 0 4px}

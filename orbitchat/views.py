@@ -82,6 +82,7 @@ def _room_dict(room, user):
         "member_count": len(members),
         "unread": mem.unread_count() if mem else 0,
         "muted": mem.muted if mem else False,
+        "pinned_chat": mem.pinned if mem else False,
         "is_admin": (mem.role == "admin") if mem else False,
         "last_message": ({"body": last.body or ("[file] " + (last.attachment_name or "")),
                            "sender_name": last.sender.get_full_name() or last.sender.username,
@@ -167,7 +168,10 @@ def api_rooms(request, company_slug):
                                      memberships__user=request.user)
              .distinct().prefetch_related("memberships__user"))
     rooms = sorted(rooms, key=lambda r: r.updated_at, reverse=True)
-    return JsonResponse({"rooms": [_room_dict(r, request.user) for r in rooms]})
+    dicts = [_room_dict(r, request.user) for r in rooms]
+    dicts.sort(key=lambda d: d["updated_at"], reverse=True)
+    dicts.sort(key=lambda d: not d["pinned_chat"])  # pinned chats float up (stable)
+    return JsonResponse({"rooms": dicts})
 
 
 @company_access_required
@@ -236,7 +240,12 @@ def api_messages(request, company_slug, room_id):
         qs = qs.filter(id__lt=int(before))
     msgs = list(qs.order_by("-created_at")[:50])
     msgs.reverse()
-    return JsonResponse({"messages": [m.to_dict() for m in msgs]})
+    pinned = list(room.messages.filter(is_deleted=False, is_pinned=True)
+                  .select_related("sender").order_by("-created_at")[:10])
+    return JsonResponse({
+        "messages": [m.to_dict() for m in msgs],
+        "pinned": [m.to_dict() for m in pinned],
+    })
 
 
 @company_access_required
@@ -297,6 +306,128 @@ def api_delete_message(request, company_slug, message_id):
     msg.body = ""
     msg.save(update_fields=["is_deleted", "body"])
     return JsonResponse({"ok": True})
+
+
+@company_access_required
+@require_POST
+def api_edit_message(request, company_slug, message_id):
+    """Edit own message text (attachments can't be edited)."""
+    c = request.company
+    msg = get_object_or_404(ChatMessage, pk=message_id, company=c, is_deleted=False)
+    _room_or_404(c, msg.room_id, request.user)
+    if msg.sender != request.user:
+        return JsonResponse({"error": "You can only edit your own messages"}, status=403)
+    body = (request.POST.get("body") or "").strip()
+    if not body:
+        return JsonResponse({"error": "Empty message"}, status=400)
+    msg.body = body[:4000]
+    msg.edited_at = timezone.now()
+    msg.save(update_fields=["body", "edited_at"])
+    return JsonResponse({"message": msg.to_dict()})
+
+
+@company_access_required
+@require_POST
+def api_pin_message(request, company_slug, message_id):
+    """Pin/unpin a message in its room (sender, room admin, or management)."""
+    c = request.company
+    msg = get_object_or_404(ChatMessage, pk=message_id, company=c, is_deleted=False)
+    room, mem = _room_or_404(c, msg.room_id, request.user)
+    if msg.sender != request.user and mem.role != "admin" \
+            and not _is_management(request.membership):
+        return JsonResponse({"error": "Not allowed"}, status=403)
+    msg.is_pinned = not msg.is_pinned
+    msg.save(update_fields=["is_pinned"])
+    return JsonResponse({"ok": True, "is_pinned": msg.is_pinned})
+
+
+@company_access_required
+@require_POST
+def api_forward_message(request, company_slug, message_id):
+    """Forward a message (text/attachment) into another room you belong to."""
+    c = request.company
+    msg = get_object_or_404(ChatMessage, pk=message_id, company=c, is_deleted=False)
+    _room_or_404(c, msg.room_id, request.user)
+    try:
+        target_id = int(request.POST.get("room_id", "0"))
+    except ValueError:
+        return JsonResponse({"error": "Invalid room"}, status=400)
+    target, _ = _room_or_404(c, target_id, request.user)
+    if target.id == msg.room_id:
+        return JsonResponse({"error": "Already in this chat"}, status=400)
+    fwd = ChatMessage.objects.create(
+        company=c, room=target, sender=request.user,
+        body=msg.body, reply_to=None, forwarded=True,
+        record_link=msg.record_link, record_label=msg.record_label)
+    if msg.attachment:
+        try:
+            fwd.attachment.save(msg.attachment_name or "file",
+                                msg.attachment.file, save=True)
+            fwd.attachment_name = msg.attachment_name
+            fwd.save(update_fields=["attachment", "attachment_name"])
+        except Exception:
+            pass
+    target.save(update_fields=["updated_at"])
+    _notify(c, target, fwd)
+    return JsonResponse({"ok": True, "room_id": target.id})
+
+
+@company_access_required
+@require_POST
+def api_toggle_mute(request, company_slug, room_id):
+    c = request.company
+    room, mem = _room_or_404(c, room_id, request.user)
+    mem.muted = not mem.muted
+    mem.save(update_fields=["muted"])
+    return JsonResponse({"ok": True, "muted": mem.muted})
+
+
+@company_access_required
+@require_POST
+def api_toggle_pin_chat(request, company_slug, room_id):
+    c = request.company
+    room, mem = _room_or_404(c, room_id, request.user)
+    mem.pinned = not mem.pinned
+    mem.save(update_fields=["pinned"])
+    return JsonResponse({"ok": True, "pinned": mem.pinned})
+
+
+@company_access_required
+@require_POST
+def api_share_record(request, company_slug, room_id):
+    """Post an ERP record card into a room. Body: app_label, model, pk."""
+    c = request.company
+    room, mem = _room_or_404(c, room_id, request.user)
+    app_label = (request.POST.get("app_label") or "").strip()
+    model = (request.POST.get("model") or "").strip()
+    try:
+        pk = int(request.POST.get("pk", "0"))
+    except ValueError:
+        return JsonResponse({"error": "Invalid record"}, status=400)
+    label, url = _resolve_record(c, app_label, model, pk, request.user)
+    if not label:
+        return JsonResponse({"error": "Record not found or no access"}, status=404)
+    msg = ChatMessage.objects.create(
+        company=c, room=room, sender=request.user,
+        body=f"Shared {label}",
+        record_link=f"{app_label}:{model}:{pk}", record_label=label)
+    room.save(update_fields=["updated_at"])
+    _notify(c, room, msg)
+    return JsonResponse({"message": msg.to_dict()})
+
+
+def _resolve_record(company, app_label, model, pk, user):
+    """Return (label, url) for a business record the user may see, else (None, None)."""
+    try:
+        if app_label == "req" and model == "Request":
+            from req.models import Request
+            r = Request.objects.get(pk=pk, company=company)
+            label = f"{r.ref_no} — {r.title}"
+            url = f"/c/{company.slug}/req/requests/{r.pk}/"
+            return label, url
+    except Exception:
+        pass
+    return None, None
 
 
 @company_access_required
