@@ -45,10 +45,19 @@ def _presence_map(user_ids):
     return {uid: (uid in seen) for uid in user_ids}
 
 
+def _avatar_url(u):
+    try:
+        p = u.profile
+        return p.avatar.url if p.avatar else ""
+    except Exception:
+        return ""
+
+
 def _user_dict(u, online=None):
     return {"id": u.id, "username": u.username,
             "name": u.get_full_name() or u.username,
             "initial": (u.get_full_name() or u.username or "?")[:1].upper(),
+            "avatar": _avatar_url(u),
             "online": online}
 
 
@@ -61,12 +70,14 @@ def _room_dict(room, user):
         other = next((m.user for m in members if m.user_id != user.id), None)
         name = (other.get_full_name() or other.username) if other else "Direct Message"
         peer_online = online.get(other.id, False) if other else False
+        peer_avatar = _avatar_url(other) if other else ""
     else:
-        name, peer_online = room.display_name(), None
+        name, peer_online, peer_avatar = room.display_name(), None, ""
     return {
         "id": room.id, "type": room.room_type, "name": name,
         "description": room.description,
         "peer_online": peer_online,
+        "peer_avatar": peer_avatar,
         "members": [_user_dict(m.user, online.get(m.user_id, False)) for m in members],
         "member_count": len(members),
         "unread": mem.unread_count() if mem else 0,
@@ -422,3 +433,26 @@ def api_room_members(request, company_slug, room_id):
     else:
         return JsonResponse({"error": "Invalid action"}, status=400)
     return JsonResponse({"room": _room_dict(room, request.user)})
+
+
+@company_access_required
+def api_profile(request, company_slug):
+    """Get/update own chat profile (avatar + title)."""
+    from core.models import UserProfile
+    prof, _ = UserProfile.objects.get_or_create(user=request.user)
+    if request.method == "POST":
+        if "avatar" in request.FILES:
+            f = request.FILES["avatar"]
+            if f.size > 2 * 1024 * 1024:
+                return JsonResponse({"error": "Image too large (max 2MB)"}, status=400)
+            prof.avatar.save(f"user_{request.user.id}/{f.name}", f, save=True)
+        title = request.POST.get("title")
+        if title is not None:
+            prof.title = title[:80]
+            prof.save()
+    return JsonResponse({
+        "name": request.user.get_full_name() or request.user.username,
+        "username": request.user.username,
+        "title": prof.title,
+        "avatar": prof.avatar.url if prof.avatar else "",
+    })

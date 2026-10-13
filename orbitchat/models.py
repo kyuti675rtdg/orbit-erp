@@ -89,12 +89,17 @@ class ChatMessage(CompanyOwned):
 
     def to_dict(self, viewer=None):
         from django.urls import reverse
+        try:
+            avatar = self.sender.profile.avatar.url if self.sender.profile.avatar else ""
+        except Exception:
+            avatar = ""
         d = {
             "id": self.id,
             "room": self.room_id,
             "sender": self.sender_id,
             "sender_name": (self.sender.get_full_name() or self.sender.username),
             "sender_username": self.sender.username,
+            "sender_avatar": avatar,
             "body": self.body,
             "created_at": self.created_at.isoformat(),
             "edited": bool(self.edited_at),

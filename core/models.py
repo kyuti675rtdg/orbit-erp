@@ -96,3 +96,20 @@ class Membership(models.Model):
     @property
     def can_finance(self):
         return self.role in settings.FINANCE_ROLES
+
+
+class UserProfile(models.Model):
+    """Extended user info — avatar and display preferences."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                related_name="profile")
+    avatar = models.ImageField(upload_to="avatars/", null=True, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    title = models.CharField(max_length=80, blank=True)
+
+    def avatar_url(self):
+        if self.avatar:
+            return self.avatar.url
+        return ""
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"

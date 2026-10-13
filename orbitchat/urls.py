@@ -21,4 +21,5 @@ urlpatterns = [
     path("api/search/", views.api_search, name="orbitchat_api_search"),
     path("api/updates/", views.api_updates, name="orbitchat_api_updates"),
     path("api/presence/", views.api_heartbeat, name="orbitchat_api_heartbeat"),
+    path("api/profile/", views.api_profile, name="orbitchat_api_profile"),
 ]

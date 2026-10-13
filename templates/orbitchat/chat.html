@@ -23,6 +23,7 @@
       {% if is_management %}
       <button class="btn btn-primary btn-sm" id="ocNewGroup">{% icon 'plus' 14 %} New Group</button>
       {% endif %}
+      <button class="btn btn-ghost btn-sm" id="ocProfileBtn">{% icon 'user' 14 %} My Profile</button>
       <span class="oc-hint">Department channels sync automatically</span>
     </div>
   </aside>
@@ -100,6 +101,28 @@
   </div>
 </div>
 
+<div class="oc-modal hidden" id="ocProfileModal">
+  <div class="oc-modal-card">
+    <h3>My Profile</h3>
+    <div style="display:flex;gap:16px;align-items:center">
+      <div class="oc-avatar" id="ocProfAv" style="width:72px;height:72px;font-size:28px">?</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:16px" id="ocProfName">—</div>
+        <div style="color:var(--muted);font-size:13px" id="ocProfUname">—</div>
+      </div>
+    </div>
+    <label class="lbl" style="margin:6px 0 4px">Job title</label>
+    <input id="ocProfTitle" class="input" placeholder="e.g. Operations Manager" maxlength="80">
+    <label class="lbl" style="margin:6px 0 4px">Profile picture</label>
+    <input type="file" id="ocProfFile" accept="image/*" class="input">
+    <div style="font-size:12px;color:var(--muted)">JPG or PNG, max 2MB. Shown next to your messages.</div>
+    <div class="oc-modal-actions">
+      <button class="btn" id="ocProfCancel">Close</button>
+      <button class="btn btn-primary" id="ocProfSave">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 "use strict";
@@ -137,9 +160,10 @@ const post = (p, data) => api(p, {method:"POST", body: data instanceof FormData 
 
 /* ================= chat list ================= */
 let typingMap = {};
-function avatarHTML(name, online){
+function avatarHTML(name, online, avatar){
   const dot = online===true ? '<span class="oc-dot on"></span>' : (online===false ? '<span class="oc-dot"></span>' : '');
-  return `<div class="oc-avatar">${esc((name||"?")[0].toUpperCase())}${dot}</div>`;
+  const inner = avatar ? `<img src="${esc(avatar)}" alt="">` : esc((name||"?")[0].toUpperCase());
+  return `<div class="oc-avatar${avatar?" has-img":""}">${inner}${dot}</div>`;
 }
 function renderRooms(){
   const q = $("ocSearch").value.trim().toLowerCase();
@@ -154,7 +178,7 @@ function renderRooms(){
       : (r.last_message ? esc(r.last_message.sender_name+": "+r.last_message.body).slice(0,60) : "<i>No messages yet</i>");
     const el = document.createElement("div");
     el.className = "oc-room" + (activeRoom && activeRoom.id===r.id ? " active" : "");
-    el.innerHTML = avatarHTML(r.name, r.type==="dm" ? r.peer_online : undefined) +
+    el.innerHTML = avatarHTML(r.name, r.type==="dm" ? r.peer_online : undefined, r.type==="dm" ? r.peer_avatar : "") +
       `<div class="oc-room-t"><div class="oc-room-top"><span class="oc-room-name">${esc(r.name)}</span>`+
       `<span class="oc-room-time">${r.last_message?timeFmt(r.last_message.at):""}</span></div>`+
       `<div class="oc-room-bot"><span class="oc-room-last">${lastTxt}</span>`+
@@ -170,7 +194,7 @@ function renderContacts(){
   contacts.forEach(c => {
     const el = document.createElement("div");
     el.className = "oc-room";
-    el.innerHTML = avatarHTML(c.name, c.online) +
+    el.innerHTML = avatarHTML(c.name, c.online, c.avatar) +
       `<div class="oc-room-t"><div class="oc-room-top"><span class="oc-room-name">${esc(c.name)}</span>`+
       `<span class="oc-pres ${c.online?"on":""}">${c.online?"online":"offline"}</span></div>`+
       `<div class="oc-room-bot"><span class="oc-room-last">${esc(c.department||c.role||"")}</span></div></div>`;
@@ -208,11 +232,14 @@ function msgHTML(m, grouped){
   let reacts = "";
   for (const [k, users] of Object.entries(m.reactions||{}))
     reacts += `<button class="oc-react${users.includes(ME)?" on":""}" data-mid="${m.id}" data-r="${k}"><i class="ri">${reactIcon(k)}</i>${users.length}</button>`;
-  return `<div class="${cls}" data-mid="${m.id}" title="${fullFmt(m.created_at)}">`+
+  const av = (!mine && !grouped)
+    ? `<div class="oc-mav">${m.sender_avatar?`<img src="${esc(m.sender_avatar)}" alt="">`:`<span>${esc((m.sender_name||"?")[0].toUpperCase())}</span>`}</div>`
+    : (!mine ? `<div class="oc-mav sp"></div>` : "");
+  return `<div class="oc-msgrow${mine?" mine":""}">${av}<div class="${cls}" data-mid="${m.id}" title="${fullFmt(m.created_at)}">`+
     (!mine && !grouped ? `<div class="oc-sender">${esc(m.sender_name)}</div>` : "")+
     msgInner(m)+
     `<div class="oc-meta"><span>${timeFmt(m.created_at)}</span>${m.edited?'<span>edited</span>':""}${ticks(m)}</div>`+
-    (reacts?`<div class="oc-reacts">${reacts}</div>`:"")+`</div>`;
+    (reacts?`<div class="oc-reacts">${reacts}</div>`:"")+`</div></div>`;
 }
 function reactIcon(k){
   return {like:"{% icon 'thumb' 13 %}", love:"{% icon 'heart' 13 %}", laugh:"{% icon 'smile' 13 %}", wow:"{% icon 'zap' 13 %}", sad:"{% icon 'frown' 13 %}"}[k]||k;
@@ -240,7 +267,9 @@ async function openRoom(id){
   $("ocEmpty").classList.add("hidden"); $("ocConvo").classList.remove("hidden");
   if (window.innerWidth < 860) { $("ocSide").classList.add("hiddenm"); $("ocMain").classList.add("showm"); }
   $("ocCName").textContent = r.name;
-  $("ocCAvatar").textContent = (r.name||"?")[0].toUpperCase();
+  const cav = $("ocCAvatar");
+  if (r.type === "dm" && r.peer_avatar) { cav.innerHTML = `<img src="${esc(r.peer_avatar)}" alt="">`; cav.classList.add("has-img"); }
+  else { cav.textContent = (r.name||"?")[0].toUpperCase(); cav.classList.remove("has-img"); }
   updateSub(); renderMembers(); hideMenu(); hideReactPick();
   // capture unread anchor BEFORE marking read
   const j0 = await api(`/rooms/${r.id}/`);
@@ -424,7 +453,7 @@ function stopPolling(){ clearInterval(pollTimer); clearInterval(hbTimer); }
 function renderMembers(){
   if(!activeRoom) return;
   $("ocMemberList").innerHTML = activeRoom.members.map(m =>
-    `<div class="oc-mem">${avatarHTML(m.name, m.online)}<span>${esc(m.name)}</span></div>`).join("");
+    `<div class="oc-mem">${avatarHTML(m.name, m.online, m.avatar)}<span>${esc(m.name)}</span></div>`).join("");
 }
 
 /* ---- init ---- */
@@ -538,6 +567,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (notifOn) alert("Orbit Chat notifications enabled.");
   };
 
+  /* my profile */
+  $("ocProfileBtn").onclick = async () => {
+    const j = await api("/profile/");
+    $("ocProfName").textContent = j.name;
+    $("ocProfUname").textContent = "@" + j.username + (j.title ? " · " + j.title : "");
+    $("ocProfTitle").value = j.title || "";
+    const av = $("ocProfAv");
+    if (j.avatar) { av.innerHTML = `<img src="${esc(j.avatar)}">`; av.classList.add("has-img"); }
+    else { av.textContent = (j.name||"?")[0].toUpperCase(); av.classList.remove("has-img"); }
+    $("ocProfileModal").classList.remove("hidden");
+  };
+  $("ocProfCancel").onclick = () => $("ocProfileModal").classList.add("hidden");
+  $("ocProfSave").onclick = async () => {
+    const fd = new FormData();
+    fd.append("title", $("ocProfTitle").value);
+    const f = $("ocProfFile").files[0];
+    if (f) fd.append("avatar", f);
+    try { await post("/profile/", fd); $("ocProfileModal").classList.add("hidden"); }
+    catch(e){ alert(e.message); }
+  };
+
   /* new group */
   const ng = $("ocNewGroup");
   if (ng) { ng.onclick = async () => {
@@ -576,7 +626,9 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-room{display:flex;gap:11px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border)}
 .oc-room:hover{background:var(--bg)}
 .oc-room.active{background:linear-gradient(90deg,rgba(255,140,0,.14),rgba(255,180,0,.06))}
-.oc-avatar{width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;color:#fff;background:linear-gradient(135deg,#ff8c00,#ffb300);position:relative}
+.oc-avatar{width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;color:#fff;background:linear-gradient(135deg,#ff8c00,#ffb300);position:relative;overflow:hidden}
+.oc-avatar.has-img{background:none}
+.oc-avatar img{width:100%;height:100%;object-fit:cover}
 .oc-dot{position:absolute;right:0;bottom:1px;width:11px;height:11px;border-radius:50%;background:#888;border:2px solid var(--bg2)}
 .oc-dot.on{background:#2ecc71}
 .oc-room-t{flex:1;min-width:0}
@@ -604,6 +656,12 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-findbar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:7px 13px;color:var(--text);font-size:13px;outline:none}
 #ocFindCount{font-size:12px;color:var(--muted);white-space:nowrap}
 .oc-msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:2px;background:var(--bg)}
+.oc-msgrow{display:flex;gap:8px;align-items:flex-end}
+.oc-msgrow.mine{justify-content:flex-end}
+.oc-mav{width:32px;height:32px;border-radius:50%;flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,#ff8c00,#ffb300)}
+.oc-mav.sp{visibility:hidden}
+.oc-mav img{width:100%;height:100%;object-fit:cover}
 .oc-day{align-self:center;font-size:11.5px;color:var(--muted);background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:3px 12px;margin:8px 0}
 .oc-unreadline{display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--orange);font-size:12px;font-weight:600}
 .oc-unreadline::before,.oc-unreadline::after{content:"";flex:1;height:1px;background:rgba(255,140,0,.4)}
