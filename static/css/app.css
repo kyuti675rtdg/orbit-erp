@@ -313,6 +313,8 @@ a:focus-visible, button:focus-visible, select:focus-visible, .theme-toggle:focus
   .content { padding: 18px 14px 60px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .kpi .k-val { font-size: 20px; }
+  .kpi { position: relative; }
+  .spark { display: none; }
   .grid2, .grid3 { grid-template-columns: 1fr; }
   .card { overflow-x: auto; }
   table.tbl { min-width: 620px; }

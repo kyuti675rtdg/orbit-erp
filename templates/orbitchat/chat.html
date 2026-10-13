@@ -83,6 +83,12 @@
   </aside>
 </div>
 
+<!-- reaction icons (server-rendered once, read by JS to avoid quoting issues) -->
+<span class="hidden" id="ric-like">{% icon 'thumb' 13 %}</span>
+<span class="hidden" id="ric-love">{% icon 'heart' 13 %}</span>
+<span class="hidden" id="ric-laugh">{% icon 'smile' 13 %}</span>
+<span class="hidden" id="ric-wow">{% icon 'zap' 13 %}</span>
+<span class="hidden" id="ric-sad">{% icon 'frown' 13 %}</span>
 <!-- reaction picker -->
 <div class="oc-reactpick hidden" id="ocReactPick"></div>
 <!-- message context menu -->
@@ -242,7 +248,8 @@ function msgHTML(m, grouped){
     (reacts?`<div class="oc-reacts">${reacts}</div>`:"")+`</div></div>`;
 }
 function reactIcon(k){
-  return {like:"{% icon 'thumb' 13 %}", love:"{% icon 'heart' 13 %}", laugh:"{% icon 'smile' 13 %}", wow:"{% icon 'zap' 13 %}", sad:"{% icon 'frown' 13 %}"}[k]||k;
+  const el = document.getElementById("ric-" + k);
+  return el ? el.innerHTML : k;
 }
 function renderMessages(){
   const box = $("ocMsgs"); box.innerHTML = "";
@@ -640,7 +647,8 @@ window.addEventListener("beforeunload", stopPolling);
 .oc-badge{background:linear-gradient(135deg,#ff8c00,#ffb300);color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 6px}
 .oc-pres{font-size:11px;color:var(--muted)} .oc-pres.on{color:#2ecc71}
 .oc-typing-txt{color:var(--orange);font-size:13px}
-.oc-side-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.oc-side-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.oc-side-foot .btn{white-space:nowrap}
 .oc-hint{font-size:11px;color:var(--muted)}
 .oc-main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
 .oc-empty{margin:auto;text-align:center;color:var(--muted);padding:30px}

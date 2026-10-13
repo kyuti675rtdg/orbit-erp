@@ -438,7 +438,7 @@ def workspace(request, company_slug):
             {
                 "name": "HR & Payroll",
                 "desc": "Driver and employee records, attendance, monthly payroll.",
-                "url": "fleet_employees",
+                "url": "hr_dashboard",
                 "icon": "users",
                 "accent": "blue",
             },

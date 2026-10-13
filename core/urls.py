@@ -7,6 +7,7 @@ urlpatterns = [
     path("", views.company_hub, name="company_hub"),
     path("companies/new/", views.company_create, name="company_create"),
     path("offline/", push_views.offline, name="offline"),
+    path("sw.js", push_views.service_worker, name="service_worker"),
     # Web push + notification preferences (PWA)
     path("push/vapid-key/", push_views.vapid_key, name="push_vapid_key"),
     path("push/subscribe/", push_views.subscribe, name="push_subscribe"),

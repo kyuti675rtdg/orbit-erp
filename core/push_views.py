@@ -102,3 +102,13 @@ def preferences(request):
 
 def offline(request):
     return render(request, "core/offline.html")
+
+
+def service_worker(request):
+    """Serve sw.js from site root so its scope covers the whole app."""
+    from django.http import FileResponse
+    path = settings.BASE_DIR / "static" / "sw.js"
+    resp = FileResponse(open(path, "rb"), content_type="application/javascript")
+    resp["Service-Worker-Allowed"] = "/"
+    resp["Cache-Control"] = "no-cache"
+    return resp

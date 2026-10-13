@@ -241,8 +241,8 @@ NAV = [
     ("Drivers & HR", None, None, [
         ("Drivers", "user", "fleet_drivers"),
         ("Driver Documents", "idcard", "fleet_driver-documents"),
-        ("Employees", "users", "fleet_employees"),
-        ("Attendance", "clock", "fleet_attendance"),
+        ("HR Management", "users", "hr_dashboard"),
+        ("Leave Requests", "clock", "hr_dashboard"),
     ]),
     ("Fuel & Maintenance", None, None, [
         ("Fuel Logs", "fuel", "fleet_fuel"),
