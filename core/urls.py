@@ -1,11 +1,18 @@
 from django.urls import include, path
 
-from . import views
+from . import push_views, views
 
 urlpatterns = [
     path("signup/", views.signup, name="signup"),
     path("", views.company_hub, name="company_hub"),
     path("companies/new/", views.company_create, name="company_create"),
+    path("offline/", push_views.offline, name="offline"),
+    # Web push + notification preferences (PWA)
+    path("push/vapid-key/", push_views.vapid_key, name="push_vapid_key"),
+    path("push/subscribe/", push_views.subscribe, name="push_subscribe"),
+    path("push/unsubscribe/", push_views.unsubscribe, name="push_unsubscribe"),
+    path("push/status/", push_views.subscription_status, name="push_status"),
+    path("notifications/preferences/", push_views.preferences, name="push_preferences"),
     path("", include("monitoring.urls")),
     # Flow: Login -> Select Company -> Company Dashboard -> Modules -> Submodules
     path("c/<slug:company_slug>/", views.company_dashboard, name="company_dashboard"),

@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/app.css">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#ff8c00">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orbit ERP">
+<link rel="apple-touch-icon" href="/static/pwa/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/pwa/icon-192.png">
 <script>
 /* apply saved theme before paint (no flash) */
 try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t === 'dark') document.documentElement.setAttribute('data-theme', __t); } catch (e) {}
@@ -74,6 +82,7 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
           <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="snav-link snav-signout" type="submit"><span class="ico">{% icon 'logout' 19 %}</span><span class="lbl">Sign Out</span></button></form>
         {% endif %}
       {% endfor %}
+      <a class="snav-link {% if request.resolver_match.url_name == 'push_preferences' %}on{% endif %}" href="{% url 'push_preferences' %}" data-nav><span class="ico">{% icon 'bell' 19 %}</span><span class="lbl">Notifications</span></a>
     </div>
     {% endif %}
     </nav>
@@ -210,7 +219,72 @@ document.addEventListener('keydown', function(e){
   document.addEventListener('click', function(){ drop.hidden = true; });
   load(); setInterval(load, 120000);
 })();
+/* ---- PWA: service worker, install prompt, one-tap push ---- */
+(function(){
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/static/sw.js', {scope: '/'}).catch(function(){});
+  });
+  // install prompt banner
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); deferred = e;
+    if (localStorage.getItem('orbit-install-dismissed')) return;
+    showPwaBar('Install Orbit ERP as an app for faster access?',
+      'Install', function(){ if (deferred) deferred.prompt(); hidePwaBar(); localStorage.setItem('orbit-install-dismissed','1'); });
+  });
+  window.addEventListener('appinstalled', function(){ hidePwaBar(); });
+  // one-tap push enable (shows once per week until enabled/dismissed)
+  async function maybePushBar(){
+    if (!('PushManager' in window) || Notification.permission === 'denied') return;
+    try {
+      var last = parseInt(localStorage.getItem('orbit-push-nag') || '0', 10);
+      if (Date.now() - last < 7*864e5) return;
+      var k = await fetch('/push/vapid-key/').then(function(r){ return r.json(); });
+      if (!k.configured) return;
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if (sub || Notification.permission === 'granted') return;
+      showPwaBar('Get instant alerts for chats, approvals and tasks?',
+        'Enable alerts', async function(){
+          try {
+            var sub2 = await reg.pushManager.subscribe({userVisibleOnly: true,
+              applicationServerKey: urlB64(k.publicKey)});
+            var j = sub2.toJSON();
+            await fetch('/push/subscribe/', {method:'POST',
+              headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+              body: JSON.stringify({endpoint:j.endpoint, keys:j.keys})});
+          } catch(e){}
+          hidePwaBar();
+        });
+    } catch(e){}
+  }
+  function csrf(){ var m = document.cookie.match(/csrftoken=([^;]+)/); return m ? m[1] : ''; }
+  function urlB64(s){ var p='='.repeat((4-s.length%4)%4); return Uint8Array.from(atob((s+p).replace(/-/g,'+').replace(/_/g,'/')), function(c){ return c.charCodeAt(0); }); }
+  function showPwaBar(text, btnText, onTap){
+    hidePwaBar();
+    var bar = document.createElement('div');
+    bar.id = 'pwaBar';
+    bar.innerHTML = '<span></span><button class="btn btn-primary btn-sm"></button><button class="pwa-x" aria-label="Dismiss">✕</button>';
+    bar.querySelector('span').textContent = text;
+    var b = bar.querySelector('.btn'); b.textContent = btnText; b.onclick = onTap;
+    bar.querySelector('.pwa-x').onclick = function(){
+      hidePwaBar(); localStorage.setItem('orbit-push-nag', String(Date.now()));
+    };
+    document.body.appendChild(bar);
+  }
+  function hidePwaBar(){ var b = document.getElementById('pwaBar'); if (b) b.remove(); }
+  setTimeout(maybePushBar, 4000);
+})();
 </script>
+<style>
+#pwaBar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:200;display:flex;gap:10px;align-items:center;
+  background:var(--card);border:1px solid var(--orange);border-radius:14px;padding:10px 12px 10px 16px;
+  box-shadow:0 12px 40px rgba(0,0,0,.45);font-size:13.5px;max-width:92vw;animation:pwaIn .35s ease}
+@keyframes pwaIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+#pwaBar .pwa-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px}
+@media(max-width:640px){#pwaBar{bottom:12px;font-size:12.5px}}
+</style>
 {% block scripts %}{% endblock %}
 </body>
 </html>

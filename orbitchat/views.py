@@ -131,6 +131,16 @@ def _notify(company, room, message):
             title=f"New message from {message.sender.get_full_name() or message.sender.username}",
             message=(message.body or "[file]")[:160],
             link=f"/c/{company.slug}/chat/?room={room.id}")
+        from core.push import send_push
+        try:
+            send_push(
+                mem.user,
+                f"{message.sender.get_full_name() or message.sender.username} ({room.display_name() if room.room_type != 'dm' else 'Orbit Chat'})",
+                (message.body or "[attachment]")[:160],
+                url=f"/c/{company.slug}/chat/?room={room.id}",
+                category="chat", tag=f"orbit-chat-{room.id}")
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------- page

@@ -14,6 +14,9 @@ def _notify(company, user, title, message, link=""):
             company=company, user=user, title=title, message=message,
             defaults={"link": link},
         )
+        from core.push import send_push
+        send_push(user, title, message, url=link or "/", category="approvals",
+                  tag=f"orbit-approvals-{company.id}")
     except Exception:
         pass
 

@@ -4,3 +4,4 @@ python-dotenv
 whitenoise
 gunicorn
 Pillow
+pywebpush

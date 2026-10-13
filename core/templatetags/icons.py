@@ -95,3 +95,8 @@ def icon(name, size=18):
         f'stroke-linejoin="round" aria-hidden="true">{body}</svg>'
     )
     return mark_safe(svg)
+
+
+@register.filter
+def get_item(d, key):
+    return (d or {}).get(key)

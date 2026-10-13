@@ -9,6 +9,9 @@ def _notify(company, user, title, message, link=""):
         from shared.models import Notification
         Notification.objects.create(company=company, user=user,
                                     title=title, message=message, link=link)
+        from core.push import send_push
+        send_push(user, title, message, url=link or "/", category="hr",
+                  tag=f"orbit-hr-{company.id}")
     except Exception:
         pass
 

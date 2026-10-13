@@ -113,3 +113,43 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Profile of {self.user.username}"
+
+
+class PushSubscription(models.Model):
+    """Web push subscription for a user (one per browser/device)."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name="push_subscriptions")
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    user_agent = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"push:{self.user.username}:{self.endpoint[-24:]}"
+
+
+class NotificationPreference(models.Model):
+    """Per-user opt-in per notification category for web push."""
+    CATEGORIES = [
+        ("chat", "Chat messages"),
+        ("approvals", "Approvals & requests"),
+        ("hr", "HR updates"),
+        ("announcements", "Announcements"),
+        ("system", "System alerts"),
+    ]
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                related_name="notification_pref")
+    chat = models.BooleanField(default=True)
+    approvals = models.BooleanField(default=True)
+    hr = models.BooleanField(default=True)
+    announcements = models.BooleanField(default=True)
+    system = models.BooleanField(default=True)
+    quiet_hours_start = models.TimeField(null=True, blank=True)
+    quiet_hours_end = models.TimeField(null=True, blank=True)
+
+    def enabled(self, category):
+        return bool(getattr(self, category, True))
+
+    def __str__(self):
+        return f"prefs:{self.user.username}"

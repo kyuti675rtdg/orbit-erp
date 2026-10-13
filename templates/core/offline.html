@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline — Orbit ERP</title>
+<link rel="stylesheet" href="/static/css/app.css">
+<style>
+.off{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;text-align:center}
+.off-card{max-width:420px}
+.off-ico{width:84px;height:84px;margin:0 auto 18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(255,140,0,.18),rgba(255,180,0,.08));color:var(--orange);font-size:34px;font-weight:800}
+</style>
+</head>
+<body>
+<div class="off"><div class="off-card">
+  <div class="off-ico">O</div>
+  <h2>You're offline</h2>
+  <p style="color:var(--muted)">Orbit ERP needs an internet connection for live data. Check your connection and try again.</p>
+  <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+</div></div>
+</body>
+</html>

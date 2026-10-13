@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}Notification Preferences — Orbit ERP{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'bell' 24 %}</span> Notification Preferences{% endblock %}
+{% block crumb %}Orbit ERP · Notifications{% endblock %}
+{% block content %}
+<div class="card" style="max-width:640px">
+  <h3 style="margin-top:0">Push notifications</h3>
+  <p class="sub">Choose which ERP activities send push alerts to your devices — even when the app is in the background.</p>
+
+  <div id="pushState" class="push-state">
+    <span class="spinner"></span> Checking push status…
+  </div>
+  <div style="display:flex;gap:10px;margin:14px 0 6px;flex-wrap:wrap">
+    <button class="btn btn-primary" id="pushEnable">{% icon 'bell' 16 %} Enable push notifications</button>
+    <button class="btn btn-ghost hidden" id="pushDisable">Disable on this device</button>
+  </div>
+  <p class="sub" id="pushHint">One tap — your browser will ask for permission.</p>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+
+  <form method="post">
+    {% csrf_token %}
+    <h4 style="margin:0 0 4px">Alert categories</h4>
+    <p class="sub">Push is sent only for categories you keep on.</p>
+    {% for key, label in categories %}
+    <label class="pref-row">
+      <span><b>{{ label }}</b></span>
+      <span class="switch"><input type="checkbox" name="pref_{{ key }}" {% if prefs|get_item:key %}checked{% endif %}><i></i></span>
+    </label>
+    {% endfor %}
+    <h4 style="margin:18px 0 4px">Quiet hours <span class="sub" style="font-weight:400">(optional — no push during this window)</span></h4>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input type="time" class="input" name="quiet_start" value="{{ pref.quiet_hours_start|time:'H:i' }}">
+      <span class="sub">to</span>
+      <input type="time" class="input" name="quiet_end" value="{{ pref.quiet_hours_end|time:'H:i' }}">
+    </div>
+    <div style="margin-top:20px"><button class="btn btn-primary" type="submit">Save preferences</button></div>
+  </form>
+</div>
+<style>
+.pref-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:14px}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch i{position:absolute;inset:0;background:var(--border);border-radius:14px;transition:.2s;cursor:pointer}
+.switch i:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked + i{background:linear-gradient(135deg,var(--orange),var(--orange2))}
+.switch input:checked + i:before{transform:translateX(20px)}
+.push-state{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13.5px}
+.push-state.ok{border-color:rgba(46,204,113,.5)}
+.push-state.warn{border-color:rgba(255,140,0,.5)}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin 1s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sub{color:var(--muted);font-size:13px}
+</style>
+<script>
+(function(){
+  const st = document.getElementById("pushState"),
+        en = document.getElementById("pushEnable"),
+        dis = document.getElementById("pushDisable"),
+        hint = document.getElementById("pushHint");
+  const ok = m => { st.className="push-state ok"; st.innerHTML=m; };
+  const warn = m => { st.className="push-state warn"; st.innerHTML=m; };
+
+  async function refresh(){
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      warn("Push notifications are not supported in this browser."); en.classList.add("hidden"); return;
+    }
+    const s = await fetch("/push/status/").then(r=>r.json()).catch(()=>({}));
+    if (!s.vapid_configured) { warn("Push service is not configured yet."); en.classList.add("hidden"); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      ok(`Push enabled on this device${s.devices?` (${s.devices} device${s.devices===1?"":"s"} total)`:""}.`);
+      en.classList.add("hidden"); dis.classList.remove("hidden");
+      hint.textContent = "You'll get alerts even when Orbit ERP is in the background.";
+    } else {
+      st.className="push-state"; st.innerHTML="Push is off on this device.";
+      en.classList.remove("hidden"); dis.classList.add("hidden");
+    }
+  }
+  en.onclick = async () => {
+    try {
+      const k = await fetch("/push/vapid-key/").then(r=>r.json());
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64(k.publicKey),
+      });
+      const j = sub.toJSON();
+      await fetch("/push/subscribe/", {method:"POST",
+        headers:{"Content-Type":"application/json","X-CSRFToken":csrftoken()},
+        body: JSON.stringify({endpoint:j.endpoint, keys:j.keys})});
+      refresh();
+    } catch(e){ warn("Could not enable push: "+(e.message||e)); }
+  };
+  dis.onclick = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await fetch("/push/unsubscribe/", {method:"POST",
+        headers:{"Content-Type":"application/json","X-CSRFToken":csrftoken()},
+        body: JSON.stringify({endpoint:sub.endpoint})});
+      await sub.unsubscribe();
+    }
+    refresh();
+  };
+  function urlB64(s){ const p="=".repeat((4-s.length%4)%4); return Uint8Array.from(atob((s+p).replace(/-/g,"+").replace(/_/g,"/")), c=>c.charCodeAt(0)); }
+  function csrftoken(){ const m=document.cookie.match(/csrftoken=([^;]+)/); return m?m[1]:""; }
+  refresh();
+})();
+</script>
+{% endblock %}
