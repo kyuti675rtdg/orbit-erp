@@ -167,11 +167,6 @@ def seed_comms(co, admin):
     from comms import models as cm
     if cm.Task.objects.filter(company=co).exists():
         return
-    conv = cm.Conversation.objects.create(company=co, title="Management",
-                                          conversation_type="department")
-    conv.participants.add(admin)
-    cm.Message.objects.create(company=co, conversation=conv, sender=admin,
-                              body="Welcome to the company channel. Please review the Q4 targets.")
     for title, prio, days in [("Prepare monthly financial summary", "high", 5),
                               ("Update employee attendance records", "normal", 3),
                               ("Review pending leave requests", "urgent", 2)]:
@@ -231,41 +226,6 @@ def seed_requests(co, admin):
             rq_hooks.on_returned(co, r, approver)
 
 
-def seed_communication(co, admin):
-    """Department channels, a management group, and sample messages."""
-    from communication.models import Channel, ChannelMember, ChatMessage
-    from shared.models import Department
-    if Channel.objects.filter(company=co).exists():
-        return
-    depts = list(Department.objects.filter(company=co)[:6])
-    if not depts:
-        for name, code in [("Operations", "OPS"), ("Administration", "ADM")]:
-            depts.append(Department.objects.create(
-                company=co, name=name, code=code,
-                description=f"{name} department"))
-    for dept in depts:
-        ch, _ = Channel.objects.get_or_create(
-            company=co, channel_type="department", department=dept,
-            defaults={"name": f"{dept.name} — Team", "created_by": admin,
-                      "description": f"Team discussions for {dept.name}."})
-        ChannelMember.objects.get_or_create(channel=ch, user=admin,
-                                            defaults={"is_admin": True})
-    first = Channel.objects.filter(company=co, channel_type="department").first()
-    if first:
-        ChatMessage.objects.create(
-            company=co, channel=first, sender=admin,
-            body="Welcome to the team channel. Please use this space for "
-                 "department updates and coordination.")
-    mgmt = Channel.objects.create(
-        company=co, name="Management", channel_type="group",
-        description="Cross-department management coordination.",
-        created_by=admin)
-    ChannelMember.objects.create(channel=mgmt, user=admin, is_admin=True)
-    ChatMessage.objects.create(
-        company=co, channel=mgmt, sender=admin,
-        body="Weekly priorities: clear pending approvals and review the budget.")
-
-
 def seed_executive(co):
     from executive import models as e
     if e.ReportDefinition.objects.filter(company=co).exists():
@@ -307,7 +267,6 @@ class Command(BaseCommand):
             seed_comms(co, admin)
             seed_executive(co)
             seed_requests(co, admin)
-            seed_communication(co, admin)
             backfill_finance_ledger(co)
             n += 1
         self.stdout.write(self.style.SUCCESS(f"enterprise seed ok ({n} companies)"))

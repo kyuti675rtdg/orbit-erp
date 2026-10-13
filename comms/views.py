@@ -64,19 +64,15 @@ def dashboard(request, company_slug):
     my_tasks = open_tasks.filter(assigned_to=request.user).count()
     upcoming = m.Meeting.objects.filter(company=c, start__date__gte=today).order_by("start")[:8]
     recent_ann = Announcement.objects.filter(company=c, is_active=True).order_by("-publish_date")[:5]
-    convos = m.Conversation.objects.filter(company=c, is_active=True).order_by("-created_at")[:6]
-
     kpis = [
         D.kpi("Unread Notifications", f"{unread}", "bell", "orange", sub="in your inbox"),
         D.kpi("Open Tasks", f"{open_tasks.count()}", "clipboard", "blue",
               sub=f"{my_tasks} assigned to me"),
         D.kpi("Upcoming Meetings", f"{m.Meeting.objects.filter(company=c, start__date__gte=today).count()}",
               "calendar", "green", sub="scheduled"),
-        D.kpi("Active Conversations", f"{m.Conversation.objects.filter(company=c, is_active=True).count()}",
-              "chat", "purple", sub="channels"),
     ]
     cfg = {
-        "title": "Communication Hub", "subtitle": "Messages, tasks, meetings & announcements",
+        "title": "Collaboration Hub", "subtitle": "Tasks, meetings & announcements",
         "kpis": kpis,
         "tables": [
             {"title": "My Open Tasks", "headers": ["Task", "Due", "Priority"],
@@ -95,7 +91,6 @@ def dashboard(request, company_slug):
             {"label": "New Task", "icon": "plus", "url": _el(c, "comms_entity_create", "tasks")},
             {"label": "Schedule Meeting", "icon": "plus", "url": _el(c, "comms_entity_create", "meetings")},
             {"label": "New Announcement", "icon": "plus", "url": _el(c, "comms_entity_create", "announcements")},
-            {"label": "Start Conversation", "icon": "plus", "url": _el(c, "comms_entity_create", "conversations")},
         ],
     }
     return D.render_module_dashboard(request, c, cfg)

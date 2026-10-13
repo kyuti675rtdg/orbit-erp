@@ -6,24 +6,8 @@ from . import models as m
 E = lambda **kw: kw  # noqa: E731
 
 ENTITIES = {
-    "conversations": E(
-        title="Conversations", singular="Conversation", icon="chat",
-        model=m.Conversation,
-        list_display=[("Title", "title"), ("Type", "conversation_type"), ("Created", "created_at")],
-        search=["title"],
-        form_fields=["title", "conversation_type", "department", "participants", "is_active"],
-        detail_related=[
-            ("Messages", "messages", [("Sender", "sender__username"), ("Body", "body")]),
-        ],
-    ),
-    "messages": E(
-        title="Messages", singular="Message", icon="chat",
-        model=m.Message,
-        list_display=[("Conversation", "conversation__title"), ("Sender", "sender__username"),
-                      ("Sent", "created_at")],
-        search=["body"],
-        form_fields=["conversation", "sender", "body"],
-    ),
+
+
     "announcements": E(
         title="Announcements", singular="Announcement", icon="bell",
         model=sm.Announcement,

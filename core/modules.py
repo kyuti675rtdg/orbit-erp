@@ -176,7 +176,7 @@ def build_sidebar(request):
     from executive import sidebar as exe_sb
     from req import sidebar as req_sb
     from inbox import sidebar as inb_sb
-    from communication import sidebar as comm2_sb
+    from orbitchat import sidebar as chat_sb
     items.extend(hr_sb.get_section(company, counts))
     items.extend(fin_sb.get_section(company, counts))
     items.extend(adm_sb.get_section(company, counts))
@@ -191,14 +191,13 @@ def build_sidebar(request):
         if request.membership.role not in _rq_hooks.APPROVER_ROLES:
             _pq = _pq.filter(current_approver=_me)
         counts["inbox_pending"] = _pq.count() or None
-        from communication import permissions as _cp
-        counts["comm_unread"] = sum(
-            _cp.unread_counts(company, _me, request.membership).values()) or None
+        from orbitchat import sidebar as _chat_sb
+        counts["chat_unread"] = _chat_sb.unread_total(company, _me)
     except Exception:
         pass
     items.extend(req_sb.get_section(company, counts))
     items.extend(inb_sb.get_section(company, counts))
-    items.extend(comm2_sb.get_section(company, counts))
+    items.extend(chat_sb.get_section(company, counts))
     items.append({"type": "divider"})
     items.append({"type": "link", "label": "Switch Company", "icon": "globe",
                   "url": reverse("company_hub"), "url_name": "company_hub", "bottom": True})

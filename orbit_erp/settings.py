@@ -101,9 +101,9 @@ INSTALLED_APPS = [
     "executive",
     "req",
     "inbox",
-    "communication",
     "monitoring",
     "coffee",
+    "orbitchat",
 ]
 
 MIDDLEWARE = [

@@ -25,5 +25,5 @@ urlpatterns = [
     # Request workflow + messaging modules
     path("c/<slug:company_slug>/req/", include("req.urls")),
     path("c/<slug:company_slug>/inbox/", include("inbox.urls")),
-    path("c/<slug:company_slug>/comm/", include("communication.urls")),
+    path("c/<slug:company_slug>/chat/", include("orbitchat.urls")),
 ]
