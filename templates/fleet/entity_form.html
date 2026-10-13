@@ -7,7 +7,7 @@
 <div class="card" style="max-width:860px">
   <h3><span class="h-ico">{% icon cfg.icon 22 %}</span> {{ cfg.singular }}</h3>
   <div class="sub">Fields marked by your workflow — all data is saved to the company database.</div>
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="msg msg-error">{{ form.non_field_errors.0 }}</div>{% endif %}
     <div class="form-grid">
@@ -22,7 +22,7 @@
     </div>
     <div style="margin-top:22px;display:flex;gap:10px">
       <button class="btn btn-primary" type="submit">{% icon 'check' 15 %} Save {{ cfg.singular }}</button>
-      <a class="btn btn-ghost" href="{% url 'fleet_entity_list' company_slug=company.slug entity=entity %}">Cancel</a>
+      <a class="btn btn-ghost" href="{{ urls.list }}">Cancel</a>
     </div>
   </form>
 </div>

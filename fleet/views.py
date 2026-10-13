@@ -19,80 +19,26 @@ from . import models as m
 from .utils import CITY_COORDS, coords_for, interpolate_points
 
 
-# ============================================================ helpers
-def resolve(obj, accessor):
-    """Resolve 'a__b' style accessor to a display value."""
-    cur = obj
-    for part in accessor.split("__"):
-        cur = getattr(cur, part, None)
-        if cur is None:
-            return "—"
-        if callable(cur) and not isinstance(cur, dj_models.Manager):
-            try:
-                cur = cur()
-            except TypeError:
-                return "—"
-    return cur if cur not in ("", None) else "—"
+# ============================================================ shared engine
+from core import crud as _crud
+from core.modules import build_sidebar as _build_sidebar
 
 
-def display_value(obj, field_name):
-    """Human-friendly value for a model field (choices aware)."""
-    try:
-        field = obj._meta.get_field(field_name)
-    except Exception:
-        return resolve(obj, field_name)
-    if field.choices:
-        return getattr(obj, f"get_{field_name}_display")()
-    val = getattr(obj, field_name, None)
-    if isinstance(val, bool):
-        return "Yes" if val else "No"
-    if val in ("", None):
-        return "—"
-    from decimal import Decimal
-    if isinstance(val, int):
-        return f"{val:,}"
-    if isinstance(val, Decimal):
-        return f"{val:,}"
-    return val
+def _sidebar(request):
+    return _build_sidebar(request)
 
 
-def scope_fk_fields(form, company):
-    for name, field in form.fields.items():
-        try:
-            model_field = form._meta.model._meta.get_field(name)
-        except Exception:
-            continue
-        if isinstance(model_field, dj_models.ForeignKey):
-            rel = model_field.related_model
-            if any(f.name == "company" for f in rel._meta.get_fields()):
-                field.queryset = rel.objects.filter(company=company)
+def _trip_detail_page(request, company_slug, obj):
+    return trip_detail(request, company_slug, obj)
 
 
-def entity_form_class(cfg, company):
-    model = cfg["model"]
-    fields = cfg["form_fields"]
+def _detail_panel(entity, obj, request):
+    if entity == "invoices" and request.membership.can_finance:
+        return "fleet/_invoice_pay.html"
+    return None
 
-    def _form_init(self, *args, **kwargs):
-        forms.ModelForm.__init__(self, *args, **kwargs)
-        scope_fk_fields(self, company)
-        for fname, f in self.fields.items():
-            try:
-                mf = model._meta.get_field(fname)
-            except Exception:
-                continue
-            if isinstance(mf, dj_models.DateTimeField):
-                f.widget = forms.DateTimeInput(attrs={"type": "datetime-local"})
-            elif isinstance(mf, dj_models.DateField):
-                f.widget = forms.DateInput(attrs={"type": "date"})
-            elif isinstance(mf, dj_models.TextField):
-                f.widget.attrs.update({"rows": 3})
-            if isinstance(f.widget, (forms.TextInput, forms.NumberInput, forms.Select,
-                                     forms.DateInput, forms.DateTimeInput, forms.Textarea,
-                                     forms.EmailInput)):
-                f.widget.attrs.setdefault("class", "input")
 
-    Meta = type("Meta", (), {"model": model, "fields": fields})
-    return type("_EntityForm", (forms.ModelForm,), {"Meta": Meta, "__init__": _form_init})
+_MODULE = "Transport & Fleet"
 
 
 # ============================================================ entity registry
@@ -340,119 +286,37 @@ NAV = [
 ]
 
 
-# ============================================================ generic CRUD
-def _entity_or_404(entity):
-    cfg = ENTITIES.get(entity)
-    if not cfg:
-        from django.http import Http404
-        raise Http404("Unknown section")
-    return cfg
-
-
-@company_access_required
+# ============================================================ generic CRUD (shared engine)
 def entity_list(request, company_slug, entity):
-    cfg = _entity_or_404(entity)
-    company = request.company
-    qs = cfg["model"].objects.filter(company=company).order_by("-created_at" if hasattr(cfg["model"], "created_at") else "id")
-    q = request.GET.get("q", "").strip()
-    if q and cfg.get("search"):
-        cond = Q()
-        for f in cfg["search"]:
-            cond |= Q(**{f"{f}__icontains": q})
-        qs = qs.filter(cond)
-    paginator = Paginator(qs, 20)
-    page = paginator.get_page(request.GET.get("page"))
-    rows = []
-    for obj in page.object_list:
-        rows.append({"obj": obj, "cells": [display_value(obj, a) for _, a in cfg["list_display"]]})
-    return render(request, "fleet/entity_list.html", {
-        "company": company, "membership": request.membership, "cfg": cfg,
-        "entity": entity, "headers": [h for h, _ in cfg["list_display"]],
-        "rows": rows, "page": page, "q": q, "nav": NAV,
-    })
+    return _crud.crud_list(request, company_slug, entity, entities=ENTITIES,
+                           url_ns="fleet", sidebar_fn=_sidebar,
+                           template_dir="fleet", module_name=_MODULE)
 
 
-@company_access_required
 def entity_detail(request, company_slug, entity, pk):
-    cfg = _entity_or_404(entity)
-    company = request.company
-    obj = get_object_or_404(cfg["model"], company=company, pk=pk)
-    if cfg.get("custom_detail") == "trip_detail":
-        return trip_detail(request, company_slug, obj)
-    fields = []
-    for f in cfg["model"]._meta.get_fields():
-        if f.name in ("id", "company", "created_at", "updated_at") or f.auto_created:
-            continue
-        if isinstance(f, (dj_models.ForeignKey, dj_models.CharField, dj_models.TextField,
-                          dj_models.IntegerField, dj_models.DecimalField, dj_models.FloatField,
-                          dj_models.DateField, dj_models.DateTimeField, dj_models.BooleanField,
-                          dj_models.PositiveIntegerField, dj_models.JSONField)):
-            fields.append((f.verbose_name.title(), display_value(obj, f.name)))
-    related = []
-    for title, rel_name, cols in cfg.get("detail_related", []):
-        manager = getattr(obj, rel_name, None)
-        items = list(manager.all()[:8]) if manager is not None else []
-        related.append({"title": title, "headers": [h for h, _ in cols],
-                        "rows": [[display_value(i, a) for _, a in cols] for i in items],
-                        "count": manager.count() if manager is not None else 0})
-    return render(request, "fleet/entity_detail.html", {
-        "company": company, "membership": request.membership, "cfg": cfg,
-        "entity": entity, "obj": obj, "fields": fields, "related": related, "nav": NAV,
-    })
+    return _crud.crud_detail(request, company_slug, entity, pk, entities=ENTITIES,
+                             url_ns="fleet", sidebar_fn=_sidebar,
+                             template_dir="fleet", module_name=_MODULE,
+                             custom_detail={"trips": _trip_detail_page},
+                             detail_panel=_detail_panel)
 
 
-@company_access_required
-@editor_required
 def entity_create(request, company_slug, entity):
-    cfg = _entity_or_404(entity)
-    if cfg.get("finance") and request.membership.role not in settings.FINANCE_ROLES | settings.EDITOR_ROLES:
-        messages.error(request, "Your role does not permit this action.")
-        return redirect("fleet_entity_list", company_slug=company_slug, entity=entity)
-    Form = entity_form_class(cfg, request.company)
-    form = Form(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        obj = form.save(commit=False)
-        obj.company = request.company
-        obj.save()
-        form.save_m2m()
-        messages.success(request, f"{cfg['singular']} created.")
-        return redirect("fleet_entity_detail", company_slug=company_slug, entity=entity, pk=obj.pk)
-    return render(request, "fleet/entity_form.html", {
-        "company": request.company, "membership": request.membership, "cfg": cfg,
-        "entity": entity, "form": form, "mode": "Create", "nav": NAV,
-    })
+    return _crud.crud_create(request, company_slug, entity, entities=ENTITIES,
+                             url_ns="fleet", sidebar_fn=_sidebar,
+                             template_dir="fleet", module_name=_MODULE)
 
 
-@company_access_required
-@editor_required
 def entity_update(request, company_slug, entity, pk):
-    cfg = _entity_or_404(entity)
-    obj = get_object_or_404(cfg["model"], company=request.company, pk=pk)
-    Form = entity_form_class(cfg, request.company)
-    form = Form(request.POST or None, instance=obj)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, f"{cfg['singular']} updated.")
-        return redirect("fleet_entity_detail", company_slug=company_slug, entity=entity, pk=obj.pk)
-    return render(request, "fleet/entity_form.html", {
-        "company": request.company, "membership": request.membership, "cfg": cfg,
-        "entity": entity, "form": form, "mode": "Edit", "nav": NAV,
-    })
+    return _crud.crud_update(request, company_slug, entity, pk, entities=ENTITIES,
+                             url_ns="fleet", sidebar_fn=_sidebar,
+                             template_dir="fleet", module_name=_MODULE)
 
 
-@company_access_required
-@editor_required
 def entity_delete(request, company_slug, entity, pk):
-    cfg = _entity_or_404(entity)
-    obj = get_object_or_404(cfg["model"], company=request.company, pk=pk)
-    if request.method == "POST":
-        obj.delete()
-        messages.success(request, f"{cfg['singular']} deleted.")
-        return redirect("fleet_entity_list", company_slug=company_slug, entity=entity)
-    return render(request, "fleet/entity_confirm_delete.html", {
-        "company": request.company, "membership": request.membership, "cfg": cfg,
-        "entity": entity, "obj": obj, "nav": NAV,
-    })
+    return _crud.crud_delete(request, company_slug, entity, pk, entities=ENTITIES,
+                             url_ns="fleet", sidebar_fn=_sidebar,
+                             template_dir="fleet", module_name=_MODULE)
 
 
 # ============================================================ trip workspace
@@ -481,7 +345,7 @@ def trip_detail(request, company_slug, obj):
                  "en_route": "Mark Delivered", "delivered": "Complete & Invoice"}.get(obj.status)
     return render(request, "fleet/trip_detail.html", {
         "company": company, "membership": request.membership, "cfg": ENTITIES["trips"],
-        "entity": "trips", "trip": obj, "nav": NAV,
+        "entity": "trips", "trip": obj, "sidebar": _sidebar(request),
         "pings": pings, "ping_json": ping_json, "origin": origin, "dest": dest,
         "expenses": expenses, "exp_total": exp_total, "fuel_total": fuel_total,
         "adv_total": adv_total, "trip_cost": exp_total + fuel_total + adv_total,
@@ -611,7 +475,7 @@ def fleet_dashboard(request, company_slug):
         "exp_data": [float(e["t"]) for e in exp_by_cat],
     }
     return render(request, "fleet/dashboard.html", {
-        "company": company, "membership": request.membership, "nav": NAV,
+        "company": company, "membership": request.membership, "sidebar": _sidebar(request),
         "kpis": kpis, "charts_json": json.dumps(charts),
         "active_trips": active_trips.select_related("route", "vehicle", "driver")[:8],
         "live_alerts": live_alerts, "stored_alerts": stored_alerts,
@@ -639,7 +503,7 @@ def tracking(request, company_slug):
         })
     geofences = list(m.Geofence.objects.filter(company=company).values("name", "zone_type", "latitude", "longitude", "radius_m"))
     return render(request, "fleet/tracking.html", {
-        "company": company, "membership": request.membership, "nav": NAV,
+        "company": company, "membership": request.membership, "sidebar": _sidebar(request),
         "tracks_json": json.dumps(data), "geofences_json": json.dumps(geofences),
         "trips": trips,
     })
@@ -695,7 +559,7 @@ def reports(request, company_slug):
     total_rev = sum(r["revenue"] for r in profit_rows)
     total_cost = sum(r["cost"] for r in profit_rows)
     return render(request, "fleet/reports.html", {
-        "company": company, "membership": request.membership, "nav": NAV,
+        "company": company, "membership": request.membership, "sidebar": _sidebar(request),
         "util_rows": util_rows[:12], "profit_rows": profit_rows[:20],
         "on_time_pct": round(on_time / max(delivs.count(), 1) * 100),
         "delivered_count": delivs.count(),
@@ -723,7 +587,7 @@ def payroll_run(request, company_slug):
         messages.success(request, f"Payroll generated for {month:%B %Y}: {created} new records.")
         return redirect("fleet_entity_list", company_slug=company_slug, entity="payrolls")
     return render(request, "fleet/payroll_run.html", {
-        "company": request.company, "membership": request.membership, "nav": NAV,
+        "company": request.company, "membership": request.membership, "sidebar": _sidebar(request),
         "employees": m.Employee.objects.filter(company=request.company, status="active"),
     })
 

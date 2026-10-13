@@ -25,7 +25,7 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
     {% if my_companies %}
     <div class="co-switch">
       <form method="get" action="" id="coform" style="margin:0">
-        <select onchange="const s=this.value; if(s) location.href='/c/'+s+'/fleet/'" aria-label="Switch company">
+        <select onchange="const s=this.value; if(s) location.href='/c/'+s+'/'" aria-label="Switch company">
           {% for mc in my_companies %}
           <option value="{{ mc.company.slug }}" {% if active_company and mc.company.id == active_company.id %}selected{% endif %}>{{ mc.company.name }}</option>
           {% endfor %}
@@ -36,20 +36,20 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
     {% endif %}
 
     <nav class="nav">
-      {% if nav %}
-        {% for item in nav %}
-          {% if item.3 %}
-            <div class="nav-sec">{{ item.0 }}</div>
-            {% for c in item.3 %}
-              <a class="nl {% if request.resolver_match.url_name == c.2 %}on{% endif %}" href="{% url c.2 company_slug=active_company.slug %}"><span class="ico">{% icon c.1 %}</span>{{ c.0 }}</a>
-            {% endfor %}
-          {% else %}
-            <a class="nl {% if request.resolver_match.url_name == item.2 %}on{% endif %}" href="{% url item.2 company_slug=active_company.slug %}"><span class="ico">{% icon item.1 %}</span>{{ item.0 }}</a>
-          {% endif %}
+      {% if sidebar %}
+        {% for mod in sidebar %}
+          <div class="nav-mod"><span class="ico">{% icon mod.icon %}</span>{{ mod.module }}</div>
+          {% for sub in mod.submodules %}
+          <details class="nav-sub" {% if sub.open %}open{% endif %}>
+            <summary><span>{{ sub.name }}</span><span class="chev">›</span></summary>
+            <div class="nav-pages">
+              {% for p in sub.pages %}
+              <a class="nl sub {% if p.active %}on{% endif %}" href="{{ p.url }}"><span class="ico">{% icon p.icon %}</span>{{ p.label }}</a>
+              {% endfor %}
+            </div>
+          </details>
+          {% endfor %}
         {% endfor %}
-        <div class="nav-sec">Workspace</div>
-        <a class="nl" href="{% url 'workspace' company_slug=active_company.slug %}"><span class="ico">{% icon 'home' %}</span>Module Hub</a>
-        <a class="nl" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' %}</span>All Companies</a>
       {% else %}
         <a class="nl {% if request.resolver_match.url_name == 'company_hub' %}on{% endif %}" href="{% url 'company_hub' %}"><span class="ico">{% icon 'building' %}</span>My Companies</a>
         <a class="nl {% if request.resolver_match.url_name == 'company_create' %}on{% endif %}" href="{% url 'company_create' %}"><span class="ico">{% icon 'plus' %}</span>Register Company</a>
@@ -69,6 +69,16 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
         </div>
       </div>
       <div class="user-chip">
+        {% if active_company %}
+        <div class="notif-wrap">
+          <button class="theme-toggle" type="button" id="notifBtn" aria-label="Notifications"
+                  data-feed="{% url 'shared_notifications_feed' company_slug=active_company.slug %}"
+                  data-read="{% url 'shared_notifications_read' company_slug=active_company.slug %}">
+            <span>{% icon 'bell' 17 %}</span><span class="notif-dot" id="notifDot" hidden></span>
+          </button>
+          <div class="notif-drop" id="notifDrop" hidden></div>
+        </div>
+        {% endif %}
         <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch light / dark theme" title="Switch light / dark theme">
           <span class="icon-moon">{% icon 'moon' 17 %}</span><span class="icon-sun">{% icon 'sun' 17 %}</span>
         </button>
@@ -101,6 +111,37 @@ document.querySelectorAll('.sidebar .nav a').forEach(function(a){
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') document.body.classList.remove('nav-open');
 });
+/* notifications */
+(function(){
+  var btn = document.getElementById('notifBtn');
+  if (!btn) return;
+  var drop = document.getElementById('notifDrop'), dot = document.getElementById('notifDot');
+  function csrf(){ var m = document.cookie.match(/csrftoken=([^;]+)/); return m ? m[1] : ''; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function load(){
+    fetch(btn.dataset.feed).then(function(r){ return r.json(); }).then(function(d){
+      dot.hidden = !d.unread; dot.textContent = d.unread > 9 ? '9+' : d.unread;
+      drop.innerHTML = d.items.length ? d.items.map(function(n){
+        return '<a class="notif-item' + (n.is_read ? '' : ' unread') + '" href="' + esc(n.link || '#') + '">' +
+               '<div class="notif-t">' + esc(n.title) + '</div>' +
+               (n.message ? '<div class="notif-m">' + esc(n.message) + '</div>' : '') +
+               '<div class="notif-time">' + esc(n.time) + '</div></a>';
+      }).join('') : '<div class="empty" style="padding:16px">No notifications.</div>';
+    });
+  }
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var opening = drop.hidden;
+    drop.hidden = !drop.hidden;
+    if (opening) {
+      load();
+      fetch(btn.dataset.read, {method: 'POST', headers: {'X-CSRFToken': csrf()}});
+      setTimeout(function(){ dot.hidden = true; }, 800);
+    }
+  });
+  document.addEventListener('click', function(){ drop.hidden = true; });
+  load(); setInterval(load, 120000);
+})();
 </script>
 </body>
 </html>

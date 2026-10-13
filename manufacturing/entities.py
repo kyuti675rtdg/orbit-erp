@@ -1,0 +1,140 @@
+"""Entity registry for Manufacturing."""
+from . import models as m
+
+E = lambda **kw: kw  # noqa: E731
+
+ENTITIES = {
+    "categories": E(
+        title="Product Categories", singular="Category", icon="box",
+        model=m.ProductCategory,
+        list_display=[("Name", "name"), ("Description", "description")],
+        search=["name"],
+        form_fields=["name", "description"],
+    ),
+    "products": E(
+        title="Products", singular="Product", icon="package",
+        model=m.Product,
+        list_display=[("Name", "name"), ("SKU", "sku"), ("Category", "category__name"),
+                      ("Unit", "unit"), ("Price", "unit_price")],
+        search=["name", "sku"],
+        form_fields=["name", "sku", "category", "unit", "unit_price", "description"],
+        detail_related=[
+            ("BOMs", "boms", [("Version", "version"), ("Active", "is_active")]),
+            ("Batches", "batches", [("Batch No", "batch_no"), ("Qty", "quantity")]),
+        ],
+    ),
+    "raw-materials": E(
+        title="Raw Materials", singular="Raw Material", icon="box",
+        model=m.RawMaterial,
+        list_display=[("Name", "name"), ("Unit", "unit"), ("Unit Cost", "unit_cost"),
+                      ("Stock", "stock_qty"), ("Reorder Level", "reorder_level")],
+        search=["name", "supplier"],
+        form_fields=["name", "unit", "unit_cost", "stock_qty", "reorder_level", "supplier"],
+    ),
+    "boms": E(
+        title="BOM & Recipes", singular="BOM", icon="clipboard",
+        model=m.BOM,
+        list_display=[("Product", "product__name"), ("Version", "version"), ("Active", "is_active")],
+        search=["product__name"],
+        form_fields=["product", "version", "description", "is_active"],
+        detail_related=[
+            ("Lines", "lines", [("Material", "material__name"), ("Qty", "quantity")]),
+        ],
+    ),
+    "bom-lines": E(
+        title="BOM Lines", singular="BOM Line", icon="pencil",
+        model=m.BOMLine,
+        list_display=[("BOM", "bom__product__name"), ("Material", "material__name"), ("Quantity", "quantity")],
+        search=["material__name"],
+        form_fields=["bom", "material", "quantity"],
+    ),
+    "plans": E(
+        title="Production Planning", singular="Plan", icon="calendar",
+        model=m.ProductionPlan,
+        list_display=[("Plan No", "plan_no"), ("Product", "product__name"), ("Planned Qty", "planned_qty"),
+                      ("Start", "start_date"), ("Status", "status")],
+        search=["plan_no", "product__name"],
+        form_fields=["plan_no", "product", "planned_qty", "start_date", "end_date", "status"],
+    ),
+    "production-orders": E(
+        title="Production Orders", singular="Production Order", icon="gear",
+        model=m.ProductionOrder,
+        list_display=[("Order No", "order_no"), ("Product", "product__name"), ("Quantity", "quantity"),
+                      ("Order Date", "order_date"), ("Due", "due_date"), ("Status", "status")],
+        search=["order_no", "product__name"],
+        form_fields=["order_no", "product", "quantity", "order_date", "due_date", "status"],
+        detail_related=[
+            ("Material Issues", "material_issues", [("Issue No", "issue_no"), ("Material", "material__name")]),
+            ("Quality Checks", "quality_checks", [("Check No", "check_no"), ("Result", "result")]),
+            ("Batches", "batches", [("Batch No", "batch_no"), ("Qty", "quantity")]),
+        ],
+    ),
+    "work-centers": E(
+        title="Work Centers", singular="Work Center", icon="warehouse",
+        model=m.WorkCenter,
+        list_display=[("Name", "name"), ("Type", "center_type"), ("Capacity/Day", "capacity_per_day"), ("Status", "status")],
+        search=["name"],
+        form_fields=["name", "center_type", "capacity_per_day", "status"],
+        detail_related=[
+            ("Machines", "machines", [("Name", "name"), ("Status", "status")]),
+        ],
+    ),
+    "machines": E(
+        title="Machines", singular="Machine", icon="gear",
+        model=m.Machine,
+        list_display=[("Name", "name"), ("Work Center", "work_center__name"),
+                      ("Model", "model"), ("Status", "status")],
+        search=["name", "model"],
+        form_fields=["name", "work_center", "model", "status", "last_maintenance"],
+        detail_related=[
+            ("Maintenance", "maintenance", [("Type", "maintenance_type"), ("Scheduled", "scheduled_date")]),
+        ],
+    ),
+    "material-issues": E(
+        title="Material Consumption", singular="Material Issue", icon="box",
+        model=m.MaterialIssue,
+        list_display=[("Issue No", "issue_no"), ("Order", "production_order__order_no"),
+                      ("Material", "material__name"), ("Qty", "quantity"), ("Date", "issue_date")],
+        search=["issue_no", "material__name"],
+        form_fields=["issue_no", "production_order", "material", "quantity", "issue_date", "issued_by"],
+    ),
+    "quality-checks": E(
+        title="Quality Control", singular="Quality Check", icon="shield",
+        model=m.QualityCheck,
+        list_display=[("Check No", "check_no"), ("Order", "production_order__order_no"),
+                      ("Date", "check_date"), ("Inspector", "inspector"), ("Result", "result")],
+        search=["check_no", "inspector"],
+        form_fields=["check_no", "production_order", "check_date", "inspector", "result", "defects_found", "notes"],
+    ),
+    "warehouses": E(
+        title="Warehouses", singular="Warehouse", icon="warehouse",
+        model=m.Warehouse,
+        list_display=[("Name", "name"), ("Location", "location"), ("Manager", "manager")],
+        search=["name"],
+        form_fields=["name", "location", "manager"],
+    ),
+    "stock": E(
+        title="Inventory", singular="Stock Line", icon="box",
+        model=m.Stock,
+        list_display=[("Warehouse", "warehouse__name"), ("Type", "item_type"),
+                      ("Item", "item_name"), ("Quantity", "quantity"), ("Unit", "unit")],
+        search=["item_name"],
+        form_fields=["warehouse", "item_type", "item_name", "quantity", "unit"],
+    ),
+    "batches": E(
+        title="Batch & Lot Tracking", singular="Batch", icon="package",
+        model=m.Batch,
+        list_display=[("Batch No", "batch_no"), ("Product", "product__name"), ("Qty", "quantity"),
+                      ("Produced", "production_date"), ("Expiry", "expiry_date"), ("Status", "status")],
+        search=["batch_no", "product__name"],
+        form_fields=["batch_no", "production_order", "product", "quantity", "production_date", "expiry_date", "status"],
+    ),
+    "maintenance": E(
+        title="Maintenance", singular="Maintenance Record", icon="wrench",
+        model=m.MaintenanceRecord,
+        list_display=[("Machine", "machine__name"), ("Type", "maintenance_type"),
+                      ("Scheduled", "scheduled_date"), ("Cost", "cost"), ("Status", "status")],
+        search=["machine__name", "technician"],
+        form_fields=["machine", "maintenance_type", "scheduled_date", "completed_date", "cost", "technician", "status"],
+    ),
+}

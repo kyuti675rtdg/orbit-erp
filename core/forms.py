@@ -6,7 +6,7 @@ from .models import Company
 class CompanyForm(forms.ModelForm):
     class Meta:
         model = Company
-        fields = ["name", "industry", "country", "city", "phone", "email", "tin", "address", "plan"]
+        fields = ["name", "industry", "industry_key", "country", "city", "phone", "email", "tin", "address", "plan"]
         widgets = {
             "name": forms.TextInput(attrs={"placeholder": "e.g. Heleph Coffee Group"}),
             "industry": forms.TextInput(attrs={"placeholder": "e.g. Coffee Export & Logistics"}),

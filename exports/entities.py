@@ -1,0 +1,138 @@
+"""Entity registry for Export Management."""
+from . import models as m
+
+E = lambda **kw: kw  # noqa: E731
+
+ENTITIES = {
+    "buyers": E(
+        title="Buyers", singular="Buyer", icon="users",
+        model=m.Buyer,
+        list_display=[("Name", "name"), ("Country", "country"), ("City", "city"),
+                      ("Contact", "contact_person"), ("Status", "status")],
+        search=["name", "country", "contact_person"],
+        form_fields=["name", "country", "city", "contact_person", "email", "phone", "status"],
+        detail_related=[
+            ("Contacts", "contacts", [("Name", "name"), ("Role", "role")]),
+            ("Orders", "orders", [("Order No", "order_no"), ("Date", "order_date"), ("Status", "status")]),
+        ],
+    ),
+    "buyer-contacts": E(
+        title="Buyer Contacts", singular="Contact", icon="user",
+        model=m.BuyerContact,
+        list_display=[("Name", "name"), ("Buyer", "buyer__name"), ("Role", "role"), ("Email", "email")],
+        search=["name", "buyer__name"],
+        form_fields=["buyer", "name", "role", "email", "phone"],
+    ),
+    "quotations": E(
+        title="Quotations", singular="Quotation", icon="file",
+        model=m.ExportQuotation,
+        list_display=[("Quote No", "quote_no"), ("Buyer", "buyer__name"), ("Issue Date", "issue_date"),
+                      ("Total", "total_amount"), ("Status", "status")],
+        search=["quote_no", "buyer__name"],
+        form_fields=["quote_no", "buyer", "issue_date", "valid_until", "total_amount", "currency", "status"],
+    ),
+    "contracts": E(
+        title="Sales Contracts", singular="Contract", icon="clipboard",
+        model=m.ExportContract,
+        list_display=[("Contract No", "contract_no"), ("Buyer", "buyer__name"),
+                      ("Sign Date", "sign_date"), ("Value", "total_value"), ("Status", "status")],
+        search=["contract_no", "buyer__name"],
+        form_fields=["contract_no", "buyer", "sign_date", "total_value", "currency", "status"],
+        detail_related=[
+            ("Orders", "orders", [("Order No", "order_no"), ("Date", "order_date"), ("Status", "status")]),
+        ],
+    ),
+    "orders": E(
+        title="Export Orders", singular="Export Order", icon="package",
+        model=m.ExportOrder,
+        list_display=[("Order No", "order_no"), ("Buyer", "buyer__name"), ("Order Date", "order_date"),
+                      ("Total", "total_amount"), ("Status", "status")],
+        search=["order_no", "buyer__name"],
+        form_fields=["order_no", "buyer", "contract", "order_date", "delivery_date", "total_amount", "currency", "status"],
+        detail_related=[
+            ("Documents", "documents", [("Doc No", "doc_no"), ("Title", "title")]),
+            ("Inspections", "inspections", [("Inspection No", "inspection_no"), ("Result", "result")]),
+            ("Invoices", "invoices", [("Invoice No", "invoice_no"), ("Amount", "amount")]),
+            ("Costs", "costs", [("Type", "cost_type"), ("Amount", "amount")]),
+        ],
+    ),
+    "products": E(
+        title="Export Products", singular="Product", icon="package",
+        model=m.ExportProduct,
+        list_display=[("Name", "name"), ("Category", "category"), ("Unit", "unit"),
+                      ("Unit Price", "unit_price"), ("Stock", "stock_qty")],
+        search=["name"],
+        form_fields=["name", "category", "unit", "unit_price", "stock_qty"],
+    ),
+    "documents": E(
+        title="Export Documentation", singular="Document", icon="file",
+        model=m.ExportDocument,
+        list_display=[("Doc No", "doc_no"), ("Order", "order__order_no"),
+                      ("Type", "doc_type"), ("Title", "title"), ("Status", "status")],
+        search=["doc_no", "title"],
+        form_fields=["doc_no", "order", "doc_type", "title", "status"],
+    ),
+    "inspections": E(
+        title="Quality & Certification", singular="Inspection", icon="shield",
+        model=m.QualityInspection,
+        list_display=[("Inspection No", "inspection_no"), ("Order", "order__order_no"),
+                      ("Date", "inspection_date"), ("Inspector", "inspector"), ("Result", "result")],
+        search=["inspection_no", "certificate_no"],
+        form_fields=["inspection_no", "order", "inspection_date", "inspector", "result", "certificate_no", "notes"],
+    ),
+    "shipments": E(
+        title="Shipments", singular="Shipment", icon="truck",
+        model=m.Shipment,
+        list_display=[("Shipment No", "shipment_no"), ("Order", "order__order_no"),
+                      ("Port", "destination_port"), ("ETA", "eta"), ("Status", "status")],
+        search=["shipment_no", "destination_port", "vessel"],
+        form_fields=["shipment_no", "order", "destination_port", "vessel", "etd", "eta", "status"],
+        detail_related=[
+            ("Containers", "containers", [("Container No", "container_no"), ("Seal", "seal_no")]),
+            ("Declarations", "declarations", [("Declaration No", "declaration_no"), ("Status", "status")]),
+        ],
+    ),
+    "containers": E(
+        title="Containers", singular="Container", icon="box",
+        model=m.Container,
+        list_display=[("Container No", "container_no"), ("Shipment", "shipment__shipment_no"),
+                      ("Type", "container_type"), ("Seal", "seal_no"), ("Status", "status")],
+        search=["container_no", "seal_no"],
+        form_fields=["container_no", "shipment", "container_type", "seal_no", "status"],
+    ),
+    "declarations": E(
+        title="Customs & Clearance", singular="Declaration", icon="shield",
+        model=m.ExportDeclaration,
+        list_display=[("Declaration No", "declaration_no"), ("Shipment", "shipment__shipment_no"),
+                      ("Date", "declaration_date"), ("Status", "status")],
+        search=["declaration_no"],
+        form_fields=["declaration_no", "shipment", "declaration_date", "status"],
+    ),
+    "invoices": E(
+        title="Export Invoices", singular="Invoice", icon="receipt", finance=True,
+        model=m.ExportInvoice,
+        list_display=[("Invoice No", "invoice_no"), ("Buyer", "buyer__name"),
+                      ("Date", "invoice_date"), ("Amount", "amount"), ("Paid", "paid_amount"), ("Status", "status")],
+        search=["invoice_no", "buyer__name"],
+        form_fields=["invoice_no", "buyer", "order", "invoice_date", "due_date", "amount", "paid_amount", "status"],
+        detail_related=[
+            ("Receipts", "receipts", [("Receipt No", "receipt_no"), ("Date", "receipt_date"), ("Amount", "amount")]),
+        ],
+    ),
+    "receipts": E(
+        title="Payment Receipts", singular="Receipt", icon="bank", finance=True,
+        model=m.PaymentReceipt,
+        list_display=[("Receipt No", "receipt_no"), ("Invoice", "invoice__invoice_no"),
+                      ("Date", "receipt_date"), ("Amount", "amount"), ("Method", "method")],
+        search=["receipt_no", "reference"],
+        form_fields=["receipt_no", "invoice", "receipt_date", "amount", "method", "reference"],
+    ),
+    "costs": E(
+        title="Export Costing", singular="Cost", icon="wallet",
+        model=m.ExportCost,
+        list_display=[("Order", "order__order_no"), ("Type", "cost_type"),
+                      ("Description", "description"), ("Amount", "amount"), ("Date", "date")],
+        search=["cost_type", "description"],
+        form_fields=["order", "cost_type", "description", "amount", "date"],
+    ),
+}

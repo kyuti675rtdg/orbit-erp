@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ obj }} — {{ cfg.title }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon cfg.icon 24 %}</span> {{ obj }}{% endblock %}
+{% block crumb %}{{ company.name }} · {{ cfg.title }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <a class="btn btn-ghost btn-sm" href="{{ urls.list }}"><span style="display:inline-flex;vertical-align:-3px">{% icon 'back' 14 %}</span> Back to {{ cfg.title }}</a>
+  {% if membership.can_edit and not readonly %}
+  <div style="display:flex;gap:8px">
+    <a class="btn btn-ghost btn-sm" href="{{ urls.update }}">{% icon 'pencil' 14 %} Edit</a>
+    <a class="btn btn-danger btn-sm" href="{{ urls.delete }}">{% icon 'trash' 14 %} Delete</a>
+  </div>
+  {% endif %}
+</div>
+<div class="grid2">
+  <div class="card">
+    <h3>Details</h3><div class="sub">{{ cfg.singular }} record</div>
+    {% for k, v in fields %}
+    <div class="dl-row"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
+    {% endfor %}
+  </div>
+  <div>
+    {% for rel in related %}
+    <div class="card">
+      <h3>{{ rel.title }} <span class="badge b-gray">{{ rel.count }}</span></h3>
+      <div class="sub">Linked records</div>
+      {% if rel.rows %}
+      <div class="tbl-wrap"><table class="tbl"><thead><tr>{% for h in rel.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in rel.rows %}<tr>{% for c in row %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+      {% else %}<div style="color:var(--muted);font-size:13px">No linked records.</div>{% endif %}
+    </div>
+    {% endfor %}
+    {% if detail_panel %}{% include detail_panel %}{% endif %}
+  </div>
+</div>
+{% endblock %}

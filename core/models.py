@@ -3,6 +3,30 @@ from django.db import models
 from django.utils.text import slugify
 
 
+INDUSTRY_CHOICES = [
+    ("transport", "Transportation & Fleet"),
+    ("import", "Import Management"),
+    ("export", "Export Management"),
+    ("manufacturing", "Manufacturing"),
+    ("rental", "Building & Property Rental"),
+    ("other", "General Business"),
+]
+
+
+class CompanyOwned(models.Model):
+    """Abstract base: every operational record belongs to one company."""
+
+    company = models.ForeignKey(
+        "core.Company", on_delete=models.CASCADE,
+        related_name="%(app_label)s_%(class)s_records",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
 class Company(models.Model):
     """A client company registered on the Orbit ERP platform."""
 
@@ -14,6 +38,10 @@ class Company(models.Model):
     name = models.CharField(max_length=200, unique=True)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
     industry = models.CharField(max_length=120, blank=True)
+    industry_key = models.CharField(
+        max_length=20, choices=INDUSTRY_CHOICES, default="transport",
+        help_text="Determines the industry-specific modules for this company.",
+    )
     country = models.CharField(max_length=80, default="Ethiopia")
     city = models.CharField(max_length=80, blank=True)
     phone = models.CharField(max_length=40, blank=True)

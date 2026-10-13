@@ -24,7 +24,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "python manage.py migrate --noinput && python manage.py seed_demo && gunicorn orbit_erp.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
+    startCommand: "python manage.py migrate --noinput && python manage.py seed_demo && python manage.py seed_industries && gunicorn orbit_erp.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
     healthCheckPath: /login/
     envVars:
       - key: PYTHON_VERSION

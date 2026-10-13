@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ mode }} {{ cfg.singular }}{% endblock %}
+{% block heading %}{{ mode }} {{ cfg.singular }}{% endblock %}
+{% block crumb %}{{ company.name }} · {{ cfg.title }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:860px">
+  <h3><span class="h-ico">{% icon cfg.icon 22 %}</span> {{ cfg.singular }}</h3>
+  <div class="sub">Fields marked by your workflow — all data is saved to the company database.</div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="msg msg-error">{{ form.non_field_errors.0 }}</div>{% endif %}
+    <div class="form-grid">
+      {% for f in form %}
+      <div>
+        <label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {% if f.help_text %}<div style="font-size:11.5px;color:var(--muted);margin-top:4px">{{ f.help_text }}</div>{% endif %}
+        {% if f.errors %}<div style="color:#f87171;font-size:12px;margin-top:4px">{{ f.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:22px;display:flex;gap:10px">
+      <button class="btn btn-primary" type="submit">{% icon 'check' 15 %} Save {{ cfg.singular }}</button>
+      <a class="btn btn-ghost" href="{{ urls.list }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}{% load icons humanize %}
+{% block title %}{{ title }} · {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon heading_icon|default:'dashboard' 24 %}</span> {{ title }}{% endblock %}
+{% block crumb %}{{ company.name }} · {{ subtitle|default:'Overview' }}{% endblock %}
+{% block content %}
+<div class="kpi-grid">
+  {% for k in kpis %}
+  <div class="kpi" style="--kc:{{ k.color }}"><div class="k-ico">{% icon k.icon 22 %}</div>
+    <div class="k-val">{{ k.value }}</div><div class="k-lbl">{{ k.label }}</div>
+    {% if k.sub %}<div class="k-sub">{{ k.sub }}</div>{% endif %}</div>
+  {% endfor %}
+</div>
+
+{% if line or donut %}
+<div class="grid2" style="margin-top:18px">
+  {% if line %}<div class="card"><h3><span class="h-ico">{% icon 'chart' 20 %}</span> {{ line.title }}</h3>
+    <div class="sub">{{ line.subtitle }}</div><div class="chart-box"><canvas id="chLine"></canvas></div></div>{% endif %}
+  {% if donut %}<div class="card"><h3><span class="h-ico">{% icon 'chart' 20 %}</span> {{ donut.title }}</h3>
+    <div class="sub">{{ donut.subtitle }}</div><div class="chart-box sm"><canvas id="chDonut"></canvas></div></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="grid2" style="margin-top:18px">
+  <div class="card"><h3><span class="h-ico">{% icon 'bell' 20 %}</span> Alerts &amp; Notifications</h3>
+    <div class="sub">Items that need attention</div>
+    <div class="alert-list">
+      {% for a in alerts %}
+      <div class="alert-row"><span class="alert-ico a-{{ a.level|default:'info' }}">{% icon a.icon|default:'bell' 15 %}</span>
+        <div><div class="alert-txt">{{ a.text }}</div><div class="alert-time">{{ a.time }}</div></div></div>
+      {% empty %}<div class="empty">No alerts. Everything looks good.</div>{% endfor %}
+    </div>
+  </div>
+  <div class="card"><h3><span class="h-ico">{% icon 'bolt' 20 %}</span> Quick Actions</h3>
+    <div class="sub">Jump straight into the work</div>
+    <div class="quick-grid">
+      {% for a in actions %}<a class="quick-btn" href="{{ a.url }}"><span class="quick-ico">{% icon a.icon 17 %}</span>{{ a.label }}</a>{% endfor %}
+    </div>
+  </div>
+</div>
+
+{% for t in tables %}
+<div class="card" style="margin-top:18px">
+  <h3><span class="h-ico">{% icon t.icon|default:'file' 20 %}</span> {{ t.title }}{% if t.url %}<a class="btn btn-ghost btn-sm" style="float:right" href="{{ t.url }}">View all</a>{% endif %}</h3>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr>{% for h in t.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for r in t.rows %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="9"><div class="empty">No records yet.</div></td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/chart.umd.min.js"></script>
+<script>
+(function(){
+  function cssv(n, fb){ var v = getComputedStyle(document.documentElement).getPropertyValue(n); return (v||'').trim() || fb; }
+  var grid = cssv('--border', '#e5e7eb'), mut = cssv('--muted', '#6b7280');
+  function base(o){ o.options = o.options||{}; o.options.plugins = o.options.plugins||{};
+    o.options.plugins.legend = o.options.plugins.legend||{labels:{color:mut,boxWidth:12}};
+    o.options.scales = o.options.scales||{};
+    for (var k in o.options.scales){ o.options.scales[k].grid = {color:grid}; o.options.scales[k].ticks = {color:mut}; }
+    return o; }
+  function paint(){
+    {% if line %}var L = {{ line_json|safe }};
+    if (window._chL) window._chL.destroy();
+    window._chL = new Chart(document.getElementById('chLine'), base({type:'line',
+      data:{labels:L.labels, datasets:[{label:L.label, data:L.data, borderColor:L.color||'#ff7a18',
+        backgroundColor:(L.color||'#ff7a18')+'33', fill:true, tension:.4, pointRadius:3}]},
+      options:{responsive:true, maintainAspectRatio:false}}));{% endif %}
+    {% if donut %}var D = {{ donut_json|safe }};
+    if (window._chD) window._chD.destroy();
+    window._chD = new Chart(document.getElementById('chDonut'), base({type:'doughnut',
+      data:{labels:D.labels, datasets:[{data:D.data,
+        backgroundColor:D.colors||['#ff7a18','#ffb020','#22c55e','#3b82f6','#a855f7','#ef4444']}]},
+      options:{responsive:true, maintainAspectRatio:false, cutout:'62%'}}));{% endif %}
+  }
+  paint();
+  document.addEventListener('orbit-theme-change', paint);
+})();
+</script>
+{% endblock %}

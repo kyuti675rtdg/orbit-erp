@@ -1,0 +1,132 @@
+"""Entity registry for Import Management."""
+from . import models as m
+
+E = lambda **kw: kw  # noqa: E731
+
+ENTITIES = {
+    "suppliers": E(
+        title="Suppliers", singular="Supplier", icon="truck",
+        model=m.Supplier,
+        list_display=[("Name", "name"), ("Country", "country"), ("City", "city"),
+                      ("Contact", "contact_person"), ("Status", "status")],
+        search=["name", "country", "contact_person"],
+        form_fields=["name", "country", "city", "contact_person", "email", "phone", "payment_terms", "status"],
+        detail_related=[
+            ("Contacts", "contacts", [("Name", "name"), ("Role", "role")]),
+            ("Purchase Orders", "purchase_orders", [("PO No", "po_no"), ("Date", "order_date"), ("Status", "status")]),
+        ],
+    ),
+    "supplier-contacts": E(
+        title="Supplier Contacts", singular="Contact", icon="user",
+        model=m.SupplierContact,
+        list_display=[("Name", "name"), ("Supplier", "supplier__name"), ("Role", "role"), ("Email", "email"), ("Phone", "phone")],
+        search=["name", "supplier__name"],
+        form_fields=["supplier", "name", "role", "email", "phone"],
+    ),
+    "import-requests": E(
+        title="Import Requests", singular="Import Request", icon="clipboard",
+        model=m.ImportRequest,
+        list_display=[("Request No", "request_no"), ("Product", "product_description"),
+                      ("Qty", "quantity"), ("Est. Value", "estimated_value"), ("Status", "status")],
+        search=["request_no", "product_description"],
+        form_fields=["request_no", "product_description", "quantity", "estimated_value", "requested_by", "request_date", "status"],
+    ),
+    "purchase-orders": E(
+        title="Purchase Orders", singular="Purchase Order", icon="file",
+        model=m.PurchaseOrder,
+        list_display=[("PO No", "po_no"), ("Supplier", "supplier__name"), ("Order Date", "order_date"),
+                      ("Total", "total_amount"), ("Status", "status")],
+        search=["po_no", "supplier__name"],
+        form_fields=["po_no", "supplier", "order_date", "delivery_date", "total_amount", "currency", "status"],
+        detail_related=[
+            ("Shipments", "shipments", [("Shipment No", "shipment_no"), ("Status", "status")]),
+            ("Invoices", "invoices", [("Invoice No", "invoice_no"), ("Amount", "amount")]),
+        ],
+    ),
+    "proforma-invoices": E(
+        title="Proforma Invoices", singular="Proforma Invoice", icon="receipt",
+        model=m.ProformaInvoice,
+        list_display=[("PI No", "pi_no"), ("Supplier", "supplier__name"), ("Issue Date", "issue_date"),
+                      ("Amount", "amount"), ("Status", "status")],
+        search=["pi_no", "supplier__name"],
+        form_fields=["pi_no", "supplier", "purchase_order", "issue_date", "valid_until", "amount", "status"],
+    ),
+    "products": E(
+        title="Import Products", singular="Product", icon="package",
+        model=m.ImportProduct,
+        list_display=[("Name", "name"), ("Category", "category"), ("Unit", "unit"), ("Unit Price", "unit_price")],
+        search=["name"],
+        form_fields=["name", "category", "unit", "unit_price"],
+    ),
+    "shipments": E(
+        title="Shipments", singular="Shipment", icon="truck",
+        model=m.Shipment,
+        list_display=[("Shipment No", "shipment_no"), ("PO", "purchase_order__po_no"),
+                      ("Origin", "origin"), ("ETA", "eta"), ("Mode", "mode"), ("Status", "status")],
+        search=["shipment_no", "origin", "destination"],
+        form_fields=["shipment_no", "purchase_order", "origin", "destination", "mode", "etd", "eta", "status"],
+        detail_related=[
+            ("Containers", "containers", [("Container No", "container_no"), ("Type", "container_type")]),
+            ("Documents", "documents", [("Doc No", "doc_no"), ("Title", "title")]),
+            ("Customs", "declarations", [("Declaration No", "declaration_no"), ("Status", "status")]),
+        ],
+    ),
+    "containers": E(
+        title="Containers", singular="Container", icon="box",
+        model=m.Container,
+        list_display=[("Container No", "container_no"), ("Shipment", "shipment__shipment_no"),
+                      ("Type", "container_type"), ("Seal", "seal_no"), ("Status", "status")],
+        search=["container_no", "seal_no"],
+        form_fields=["container_no", "shipment", "container_type", "seal_no", "status"],
+    ),
+    "documents": E(
+        title="Import Documents", singular="Document", icon="file",
+        model=m.ImportDocument,
+        list_display=[("Doc No", "doc_no"), ("Shipment", "shipment__shipment_no"),
+                      ("Type", "doc_type"), ("Title", "title"), ("Status", "status")],
+        search=["doc_no", "title"],
+        form_fields=["doc_no", "shipment", "doc_type", "title", "status"],
+    ),
+    "customs": E(
+        title="Customs & Clearance", singular="Declaration", icon="shield",
+        model=m.CustomsDeclaration,
+        list_display=[("Declaration No", "declaration_no"), ("Shipment", "shipment__shipment_no"),
+                      ("Date", "declaration_date"), ("Duty", "duty_amount"), ("Tax", "tax_amount"), ("Status", "status")],
+        search=["declaration_no"],
+        form_fields=["declaration_no", "shipment", "declaration_date", "duty_amount", "tax_amount", "status"],
+    ),
+    "goods-receipts": E(
+        title="Goods Receiving (GRV)", singular="Goods Receipt", icon="package",
+        model=m.GoodsReceipt,
+        list_display=[("GRV No", "grv_no"), ("Shipment", "shipment__shipment_no"),
+                      ("Date", "receipt_date"), ("Received By", "received_by"), ("Inspection", "inspection_status")],
+        search=["grv_no"],
+        form_fields=["grv_no", "shipment", "receipt_date", "received_by", "inspection_status", "notes"],
+    ),
+    "warehouse-stock": E(
+        title="Warehouse Stock", singular="Stock Line", icon="warehouse",
+        model=m.WarehouseStock,
+        list_display=[("Product", "product__name"), ("Warehouse", "warehouse"), ("Quantity", "quantity"), ("Unit", "unit")],
+        search=["product__name", "warehouse"],
+        form_fields=["product", "warehouse", "quantity", "unit"],
+    ),
+    "supplier-invoices": E(
+        title="Supplier Invoices", singular="Invoice", icon="receipt", finance=True,
+        model=m.SupplierInvoice,
+        list_display=[("Invoice No", "invoice_no"), ("Supplier", "supplier__name"),
+                      ("Date", "invoice_date"), ("Amount", "amount"), ("Paid", "paid_amount"), ("Status", "status")],
+        search=["invoice_no", "supplier__name"],
+        form_fields=["invoice_no", "supplier", "purchase_order", "invoice_date", "due_date", "amount", "paid_amount", "status"],
+        detail_related=[
+            ("Payments", "payments", [("Payment No", "payment_no"), ("Date", "payment_date"), ("Amount", "amount")]),
+        ],
+    ),
+    "supplier-payments": E(
+        title="Supplier Payments", singular="Payment", icon="bank", finance=True,
+        model=m.SupplierPayment,
+        list_display=[("Payment No", "payment_no"), ("Invoice", "invoice__invoice_no"),
+                      ("Date", "payment_date"), ("Amount", "amount"), ("Method", "method")],
+        search=["payment_no", "reference"],
+        form_fields=["payment_no", "invoice", "payment_date", "amount", "method", "reference"],
+    ),
+}

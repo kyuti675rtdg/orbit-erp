@@ -11,7 +11,7 @@
     {% csrf_token %}
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn btn-danger" type="submit">Yes, delete it</button>
-      <a class="btn btn-ghost" href="{% url 'fleet_entity_detail' company_slug=company.slug entity=entity pk=obj.pk %}">Cancel</a>
+      <a class="btn btn-ghost" href="{{ urls.detail }}">Cancel</a>
     </div>
   </form>
 </div>

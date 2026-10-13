@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}{{ cfg.title }} — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon cfg.icon 24 %}</span> {{ cfg.title }}{% endblock %}
+{% block crumb %}{{ company.name }} · {{ module_name }}{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <form class="search" method="get">
+    <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search {{ cfg.title|lower }}…">
+    <button class="btn btn-ghost btn-sm" type="submit">Search</button>
+    {% if q %}<a class="btn btn-ghost btn-sm" href="?">Clear</a>{% endif %}
+  </form>
+  {% if membership.can_edit and not readonly %}
+  <a class="btn btn-primary" href="{{ urls.create }}">{% icon 'plus' 15 %} New {{ cfg.singular }}</a>
+  {% endif %}
+</div>
+<div class="card" style="padding:6px 20px">
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}<th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        {% for c in r.cells %}<td>{{ c }}</td>{% endfor %}
+        <td style="text-align:right;white-space:nowrap"><a class="btn btn-ghost btn-sm" href="{{ r.url }}">View <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 13 %}</span></a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="20"><div class="empty"><div class="empty-ico">{% icon cfg.icon 34 %}</div>No {{ cfg.title|lower }} found.{% if membership.can_edit and not readonly %} <a href="{{ urls.create }}" style="color:var(--orange2)">Create the first one <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 13 %}</span></a>{% endif %}</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% if page.paginator.num_pages > 1 %}
+  <div class="pager">
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}"><span style="display:inline-flex;vertical-align:-3px;transform:scaleX(-1)">{% icon 'arrow' 13 %}</span> Prev</a>{% endif %}
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}">Next <span style="display:inline-flex;vertical-align:-3px">{% icon 'arrow' 13 %}</span></a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

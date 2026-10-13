@@ -10,7 +10,7 @@
 </div>
 <div class="co-grid">
   {% for mc in memberships %}
-  <a class="co-card" href="{% url 'fleet_dashboard' company_slug=mc.company.slug %}">
+  <a class="co-card" href="{% url 'company_dashboard' company_slug=mc.company.slug %}">
     <h3>{{ mc.company.name }}</h3>
     <div class="meta">{{ mc.company.industry|default:"—" }} · {{ mc.company.city|default:mc.company.country }}</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
