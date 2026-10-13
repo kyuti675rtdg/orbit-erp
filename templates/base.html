@@ -25,7 +25,7 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
     {% if my_companies %}
     <div class="co-switch">
       <form method="get" action="" id="coform" style="margin:0">
-        <select onchange="const s=this.value; if(s) location.href='/c/'+s+'/'" aria-label="Switch company">
+        <select onchange="const s=this.value; if(s) location.href='/c/'+s+'/fleet/'" aria-label="Switch company">
           {% for mc in my_companies %}
           <option value="{{ mc.company.slug }}" {% if active_company and mc.company.id == active_company.id %}selected{% endif %}>{{ mc.company.name }}</option>
           {% endfor %}
