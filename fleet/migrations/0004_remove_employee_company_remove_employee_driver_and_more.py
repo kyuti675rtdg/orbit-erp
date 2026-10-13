@@ -7,6 +7,8 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('fleet', '0003_driver_shared_employee'),
+        # fleet HR data must be consolidated into centralized HR first
+        ('hr', '0002_consolidate_fleet_hr'),
     ]
 
     operations = [
