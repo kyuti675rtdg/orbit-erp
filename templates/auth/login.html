@@ -57,14 +57,50 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
 .lx-top{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:26px 30px}
 .lx-top .lx-tag{font-size:12px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.85);
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:7px 14px;border-radius:20px;backdrop-filter:blur(6px)}
+/* mobile-only / desktop-only elements */
+.lx-mtop,.lx-h1m,.lx-subm,.lx-mreg{display:none}
+/* ---- Mobile: clean reference-style sign-in (light, Orbit branded) ---- */
 @media(max-width:900px){
-  .lx-card{grid-template-columns:1fr;max-width:480px}
-  .lx-art{min-height:230px}
-  .lx-art-in{padding:24px}
-  .lx-quote{font-size:16px}
-  .lx-stats{display:none}
-  .lx-form{padding:34px 28px}
-  .lx-proof{flex-wrap:wrap;gap:14px}
+  .lx-stage{background:#e9edf4;padding:22px 16px calc(22px + env(safe-area-inset-bottom));align-items:flex-start}
+  .theme-toggle{display:none}
+  .lx-card{grid-template-columns:1fr;max-width:430px;min-height:0;background:#ffffff;border:0;
+    border-radius:28px;box-shadow:0 24px 60px rgba(35,70,140,.14);overflow:hidden}
+  .lx-art{display:none}
+  .lx-form{padding:26px 26px 30px}
+  .lx-mtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
+  .lx-mbrand{display:flex;align-items:center;gap:9px}
+  .lx-mark.sm{width:38px;height:38px;border-radius:11px;font-size:19px}
+  .lx-mbrand span{font-weight:800;font-size:17px;letter-spacing:.08em;color:#1c2b4a}
+  .lx-mtoplink{font-size:14px;font-weight:600;color:#8a94a8;text-decoration:none}
+  .lx-brand{display:none}
+  .lx-kicker,.lx-h1d,.lx-subd,.lx-proof,.lx-terms{display:none}
+  .lx-h1m{display:block;font-size:27px;font-weight:800;color:#1c2b4a;letter-spacing:-.01em;margin:0 0 8px}
+  .lx-subm{display:block;color:#8a94a8;font-size:14.5px;margin-bottom:26px}
+  .lx-form .lbl{font-size:13.5px;font-weight:600;color:#5a6b8c;margin:18px 0 8px}
+  .lx-form .input{background:#f2f4f9;border:1px solid #e3e8f1;border-radius:14px;
+    padding:15px 16px;font-size:16px;color:#1c2b4a;box-shadow:none}
+  .lx-form .input::placeholder{color:#a5b0c5}
+  .lx-form .input:focus{border-color:#ff8c00;background:#fff;outline:none;
+    box-shadow:0 0 0 3px rgba(255,140,0,.15)}
+  .lx-pw{position:relative}
+  .lx-pw .input{padding-right:48px;width:100%;box-sizing:border-box}
+  .lx-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:none;border:0;color:#8a94a8;padding:8px;cursor:pointer;display:flex}
+  .lx-eye.on{color:#ff8c00}
+  .lx-row{margin:18px 0 24px;font-size:13.5px}
+  .lx-remember{color:#5a6b8c}
+  .lx-remember input{accent-color:#ff8c00;width:17px;height:17px}
+  .lx-forgot{color:#8a94a8;font-weight:500}
+  .lx-actions{flex-direction:column}
+  .lx-actions .btn-ghost{display:none}
+  .lx-big{width:100%;padding:16px;font-size:16.5px;font-weight:700;border-radius:14px;
+    background:linear-gradient(135deg,#ff8c00,#ffb300);border:0;color:#fff;
+    box-shadow:0 12px 26px rgba(255,140,0,.35)}
+  .lx-big:active{transform:scale(.99)}
+  .lx-mreg{display:block;text-align:center;margin-top:26px;font-size:14px;color:#8a94a8}
+  .lx-mreg a{color:#ff8c00;font-weight:700;text-decoration:none}
+  .msg-error{background:#fdecec;border:1px solid #f5c6c6;color:#b3261e;border-radius:12px;
+    padding:11px 14px;font-size:13.5px;margin-bottom:6px}
 }
 @media(prefers-reduced-motion:reduce){.lx-card{animation:none}}
 </style>
@@ -84,29 +120,39 @@ try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t 
 <div class="lx-stage">
   <div class="lx-card">
     <div class="lx-form">
+      <div class="lx-mtop">
+        <div class="lx-mbrand"><div class="lx-mark sm">O</div><span>ORBIT</span></div>
+        <a class="lx-mtoplink" href="{% url 'signup' %}">Sign up</a>
+      </div>
       <div class="lx-brand">
         <div class="lx-mark">O</div>
         <div><div class="lx-brand-name">ORBIT <span>ERP</span></div>
         <div class="lx-brand-sub">Enterprise Suite</div></div>
       </div>
       <div class="lx-kicker">Welcome back</div>
-      <h1>Sign in to your workspace</h1>
-      <div class="lx-sub">Access every company, module and report from one secure dashboard.</div>
+      <h1 class="lx-h1d">Sign in to your workspace</h1>
+      <h1 class="lx-h1m">Welcome Back to Orbit!</h1>
+      <div class="lx-sub lx-subd">Access every company, module and report from one secure dashboard.</div>
+      <div class="lx-sub lx-subm">Sign in to your account</div>
       {% if form.errors %}<div class="msg msg-error">Invalid username or password. Please try again.</div>{% endif %}
       <form method="post">
         {% csrf_token %}
-        <label class="lbl" for="id_username" style="margin-top:0">Username</label>
-        <input class="input" type="text" name="username" id="id_username" required autofocus placeholder="your username" autocomplete="username">
+        <label class="lbl" for="id_username" style="margin-top:0">Your Username</label>
+        <input class="input" type="text" name="username" id="id_username" required autofocus placeholder="Your username" autocomplete="username">
         <label class="lbl" for="id_password">Password</label>
-        <input class="input" type="password" name="password" id="id_password" required placeholder="••••••••" autocomplete="current-password">
+        <div class="lx-pw">
+          <input class="input" type="password" name="password" id="id_password" required placeholder="••••••••" autocomplete="current-password">
+          <button type="button" class="lx-eye" id="lxEye" aria-label="Show password">{% icon 'eye' 20 %}</button>
+        </div>
         <div class="lx-row">
           <label class="lx-remember"><input type="checkbox" name="remember" checked> Remember me</label>
           <a class="lx-forgot" href="{% url 'password_reset' %}">Forgot password?</a>
         </div>
         <div class="lx-actions">
-          <button class="btn btn-primary" type="submit">Sign In</button>
+          <button class="btn btn-primary lx-big" type="submit">Sign In</button>
           <a class="btn btn-ghost" href="{% url 'signup' %}">Create account</a>
         </div>
+        <div class="lx-mreg">Don&rsquo;t have an account? <a href="{% url 'signup' %}">Create account</a></div>
       </form>
       <div class="lx-proof">
         <div><b>8+</b><span>Companies live</span></div>
@@ -136,6 +182,16 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(function(){});
   });
 }
+/* password visibility toggle */
+(function(){
+  var eye = document.getElementById('lxEye'), pw = document.getElementById('id_password');
+  if (eye && pw) eye.addEventListener('click', function(){
+    var show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    eye.classList.toggle('on', show);
+    eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
+})();
 </script>
 </body>
 </html>

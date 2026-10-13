@@ -497,13 +497,13 @@ a:focus-visible, button:focus-visible, select:focus-visible, .theme-toggle:focus
     border-top:1px solid var(--border);
     padding:6px 4px calc(6px + env(safe-area-inset-bottom));
     box-shadow:0 -8px 30px rgba(0,0,0,.35)}
-  .mtab{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
-    padding:7px 4px 5px;border:0;background:none;color:var(--muted);
+  .mtab{all:unset;flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
+    box-sizing:border-box;padding:7px 4px 5px;border:0;background:transparent;color:var(--muted);
     font-size:10.5px;font-weight:600;letter-spacing:.02em;cursor:pointer;
     text-decoration:none;min-height:54px;max-height:54px;justify-content:center;position:relative;
-    font-family:inherit;font:inherit;-webkit-appearance:none;appearance:none;
+    font-family:inherit;-webkit-appearance:none;appearance:none;
     -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-    margin:0;outline:none}
+    margin:0;outline:none;box-shadow:none;user-select:none;-webkit-user-select:none}
   .mtab-ico{display:inline-flex;line-height:0}
   .mtab-ico svg{display:block}
   .mtab-lbl{line-height:1.2;white-space:nowrap}

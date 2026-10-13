@@ -1,5 +1,5 @@
 /* Orbit ERP service worker — offline shell, push notifications, deep links. */
-const CACHE = "orbit-erp-v1";
+const CACHE = "orbit-erp-v2";
 const SHELL = [
   "/static/css/app.css",
   "/static/js/chart.umd.min.js",
