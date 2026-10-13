@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load icons %}
+{% block title %}Traceability — {{ company.name }}{% endblock %}
+{% block heading %}<span class="h-ico">{% icon 'search' 24 %}</span> Farm-to-Export Traceability{% endblock %}
+{% block crumb %}{{ company.name }} · Coffee Operations{% endblock %}
+{% block content %}
+<div class="card" style="padding:20px;max-width:720px">
+  <form method="get" style="display:flex;gap:10px">
+    <input class="input" name="q" value="{{ q }}" placeholder="Enter Lot No, Batch No or Farmer ID…" style="flex:1">
+    <button class="btn btn-primary" type="submit">Trace</button>
+  </form>
+  <p style="color:var(--muted);font-size:13px;margin:10px 0 0">
+    Farmer ID → Farm → Plant / Group → Harvest → Delivery → Intake Batch →
+    Processing Batch → Warehouse Lot → Export Order → Shipment → Buyer
+  </p>
+</div>
+{% if q %}
+<div class="card" style="padding:20px;max-width:720px">
+  {% if found %}
+  <h3 style="margin-top:0">Chain for {{ found.lot_no }}</h3>
+  <div class="timeline">
+    {% for label, detail in steps %}
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div><strong>{{ label }}</strong><br><span style="color:var(--muted)">{{ detail }}</span></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-ico">{% icon 'search' 34 %}</div>No chain found for “{{ q }}”. Check the ID and try again.</div>
+  {% endif %}
+</div>
+{% endif %}
+<style>
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:12px;position:relative;padding:0 0 18px 0}
+.tl-item:not(:last-child)::before{content:"";position:absolute;left:4px;top:14px;bottom:0;width:2px;background:var(--border)}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--orange);flex:none;margin-top:4px;z-index:1}
+</style>
+{% endblock %}

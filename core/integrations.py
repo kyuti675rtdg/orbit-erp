@@ -82,6 +82,23 @@ def sync_export_invoice_to_ar(company, inv, created, request):
     return ar
 
 
+def sync_coffee_invoice_to_ar(company, inv, created, request):
+    """Post a Bean Power Coffee export invoice into Finance (AR + journal)."""
+    from finance.models import ARInvoice
+    ar, _ = ARInvoice.objects.update_or_create(
+        company=company, source=_src("coffee", "export-invoices", inv.pk),
+        defaults={"customer_name": str(inv.order.buyer), "invoice_no": inv.invoice_no,
+                  "invoice_date": inv.invoice_date, "due_date": inv.due_date,
+                  "amount": inv.amount, "paid_amount": inv.paid_amount,
+                  "status": inv.status if inv.status in ("unpaid", "partial", "paid") else "unpaid"},
+    )
+    post_journal(company, inv.invoice_date, f"AR-{inv.invoice_no}", [
+        ("1100", "Accounts Receivable", float(inv.amount), 0),
+        ("4000", "Coffee Sales Revenue", 0, float(inv.amount)),
+    ], description=f"Coffee export invoice {inv.invoice_no}", user=getattr(request, "user", None))
+    return ar
+
+
 def sync_rent_invoice_to_ar(company, inv, created, request):
     from finance.models import ARInvoice
     tenant = inv.lease.tenant.name if inv.lease and inv.lease.tenant else ""

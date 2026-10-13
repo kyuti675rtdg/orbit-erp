@@ -97,6 +97,12 @@ def attention_counts(company):
         from req.models import Request as ERPRequest
         c["req_pending"] = ERPRequest.objects.filter(
             company=company, status="submitted").count()
+        if key == "coffee":
+            from coffee.models import PurchaseOrder, QualityCertificate, ExportOrder
+            c["coffee_po"] = PurchaseOrder.objects.filter(
+                company=company, status="submitted").count()
+            c["coffee_exp"] = ExportOrder.objects.filter(
+                company=company, status__in=["confirmed", "preparing"]).count()
     except Exception:
         pass
     return {k: v for k, v in c.items() if v}
@@ -108,6 +114,7 @@ INDUSTRY_META = {
     "export": ("EXPORT OPERATIONS", "Export Dashboard", "exports_dashboard"),
     "manufacturing": ("MANUFACTURING", "Manufacturing Dashboard", "manufacturing_dashboard"),
     "rental": ("PROPERTY RENTAL", "Rental Dashboard", "rentals_dashboard"),
+    "coffee": ("COFFEE OPERATIONS", "Coffee Dashboard", "coffee_dashboard"),
     "other": ("OPERATIONS", "Overview", "company_dashboard"),
 }
 
@@ -138,6 +145,9 @@ def build_sidebar(request):
         ind_modules = ind_sb.get_modules(company, counts)
     elif key == "rental":
         from rentals import sidebar as ind_sb
+        ind_modules = ind_sb.get_modules(company, counts)
+    elif key == "coffee":
+        from coffee import sidebar as ind_sb
         ind_modules = ind_sb.get_modules(company, counts)
     else:
         ind_modules, dash_url = [], "company_dashboard"

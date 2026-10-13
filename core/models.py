@@ -9,6 +9,7 @@ INDUSTRY_CHOICES = [
     ("export", "Export Management"),
     ("manufacturing", "Manufacturing"),
     ("rental", "Building & Property Rental"),
+    ("coffee", "Coffee Production & Export"),
     ("other", "General Business"),
 ]
 

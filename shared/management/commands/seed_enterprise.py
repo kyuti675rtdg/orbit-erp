@@ -144,6 +144,12 @@ def backfill_finance_ledger(co):
     except Exception:
         pass
     try:
+        from coffee.models import CoffeeExportInvoice
+        for inv in CoffeeExportInvoice.objects.filter(company=co).exclude(status="draft"):
+            integ.sync_coffee_invoice_to_ar(co, inv, True, None)
+    except Exception:
+        pass
+    try:
         from rentals.models import RentInvoice
         for inv in RentInvoice.objects.filter(company=co):
             integ.sync_rent_invoice_to_ar(co, inv, True, None)

@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "inbox",
     "communication",
     "monitoring",
+    "coffee",
 ]
 
 MIDDLEWARE = [
