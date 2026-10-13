@@ -4,9 +4,11 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 from django.views.static import serve as static_serve
 from core.views import LoginView
+from core.views_app import flutter_app
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("app/", flutter_app, name="flutter_app"),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path(
