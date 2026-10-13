@@ -3,6 +3,7 @@ from functools import wraps
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models import Count, Q, Sum
@@ -57,6 +58,16 @@ finance_required = role_required(*settings.FINANCE_ROLES)
 
 
 # ---------------------------------------------------------------- auth
+class LoginView(auth_views.LoginView):
+    template_name = "auth/login.html"
+
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        if not self.request.POST.get("remember"):
+            self.request.session.set_expiry(0)  # expire on browser close
+        return resp
+
+
 def signup(request):
     if request.user.is_authenticated:
         return redirect("company_hub")

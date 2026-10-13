@@ -1,16 +1,48 @@
-{% extends "auth/base_auth.html" %}
-{% block title %}Orbit ERP — Create account{% endblock %}
-{% block box %}
-<h2>Create your account</h2>
-<div class="sub">One account gives you access to every company workspace you join or register.</div>
-<form method="post">
-  {% csrf_token %}
-  {% for f in form %}
-  <label class="lbl" for="{{ f.id_for_label }}">{{ f.label }}</label>
-  {{ f }}
-  {% if f.errors %}<div style="color:#f87171;font-size:12px;margin-top:4px">{{ f.errors.0 }}</div>{% endif %}
-  {% endfor %}
-  <div style="margin-top:22px"><button class="btn btn-primary" style="width:100%;justify-content:center" type="submit">Create Account →</button></div>
-</form>
-<div style="margin-top:18px;text-align:center;font-size:13.5px;color:var(--muted)">Already have an account? <a href="{% url 'login' %}" style="color:var(--orange2);font-weight:600">Sign in</a></div>
-{% endblock %}
+{% load icons %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbit ERP — Create account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+<script>
+try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t === 'dark') document.documentElement.setAttribute('data-theme', __t); } catch (e) {}
+</script>
+</head>
+<body>
+<button class="theme-toggle" type="button" onclick="(function(){var n=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';if(n==='dark')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('orbit-theme',n);}catch(e){}})()" aria-label="Switch light / dark theme" title="Switch light / dark theme" style="position:fixed;top:18px;right:18px;z-index:50">
+  <span class="icon-moon">{% icon 'moon' 17 %}</span><span class="icon-sun">{% icon 'sun' 17 %}</span>
+</button>
+<div class="login-stage">
+  <div class="login-card">
+    <div class="login-form">
+      <div class="login-brand">
+        <div class="brand-mark">O</div>
+        <div><div class="brand-name">ORBIT <span>ERP</span></div></div>
+      </div>
+      <h1>Join Orbit ERP</h1>
+      <div class="login-sub">Create your account to access company workspaces.</div>
+      <form method="post">
+        {% csrf_token %}
+        {% for f in form %}
+        <label class="lbl" for="{{ f.id_for_label }}" {% if forloop.first %}style="margin-top:0"{% endif %}>{{ f.label }}</label>
+        {{ f }}
+        {% if f.errors %}<div style="color:#f87171;font-size:12px;margin-top:4px">{{ f.errors.0 }}</div>{% endif %}
+        {% endfor %}
+        <div class="login-actions" style="margin-top:24px">
+          <button class="btn btn-primary" type="submit">Create account</button>
+          <a class="btn btn-ghost" href="{% url 'login' %}">Sign in</a>
+        </div>
+      </form>
+      <div class="login-terms">By creating an account you agree to our terms and data policy.<br>Orbit Technology Solution PLC · Turn Ideas Into Reality</div>
+    </div>
+    <div class="login-art">
+      <img src="/static/img/login-coffee.jpg" alt="Ripe red coffee cherries on the branch">
+      <div class="login-badge">{% icon 'arrow' 22 %}</div>
+      <div class="login-tag">From cherry to cup — powered by Orbit ERP</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

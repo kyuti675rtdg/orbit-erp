@@ -1,16 +1,52 @@
-{% extends "auth/base_auth.html" %}
-{% block title %}Orbit ERP — Sign in{% endblock %}
-{% block box %}
-<h2>Welcome back</h2>
-<div class="sub">Sign in to access your company workspaces.</div>
-{% if form.errors %}<div class="msg msg-error">Invalid username or password. Please try again.</div>{% endif %}
-<form method="post">
-  {% csrf_token %}
-  <label class="lbl" for="id_username">Username</label>
-  <input class="input" type="text" name="username" id="id_username" required autofocus placeholder="your username">
-  <label class="lbl" for="id_password">Password</label>
-  <input class="input" type="password" name="password" id="id_password" required placeholder="••••••••">
-  <div style="margin-top:22px"><button class="btn btn-primary" style="width:100%;justify-content:center" type="submit">Sign In →</button></div>
-</form>
-<div style="margin-top:18px;text-align:center;font-size:13.5px;color:var(--muted)">New to Orbit ERP? <a href="{% url 'signup' %}" style="color:var(--orange2);font-weight:600">Create an account</a></div>
-{% endblock %}
+{% load icons %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbit ERP — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+<script>
+try { var __t = localStorage.getItem('orbit-theme'); if (__t === 'light' || __t === 'dark') document.documentElement.setAttribute('data-theme', __t); } catch (e) {}
+</script>
+</head>
+<body>
+<button class="theme-toggle" type="button" onclick="(function(){var n=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';if(n==='dark')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('orbit-theme',n);}catch(e){}})()" aria-label="Switch light / dark theme" title="Switch light / dark theme" style="position:fixed;top:18px;right:18px;z-index:50">
+  <span class="icon-moon">{% icon 'moon' 17 %}</span><span class="icon-sun">{% icon 'sun' 17 %}</span>
+</button>
+<div class="login-stage">
+  <div class="login-card">
+    <div class="login-form">
+      <div class="login-brand">
+        <div class="brand-mark">O</div>
+        <div><div class="brand-name">ORBIT <span>ERP</span></div></div>
+      </div>
+      <h1>Welcome Back!</h1>
+      <div class="login-sub">Please log in to your account.</div>
+      {% if form.errors %}<div class="msg msg-error">Invalid username or password. Please try again.</div>{% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <label class="lbl" for="id_username" style="margin-top:0">Username</label>
+        <input class="input" type="text" name="username" id="id_username" required autofocus placeholder="your username" autocomplete="username">
+        <label class="lbl" for="id_password">Password</label>
+        <input class="input" type="password" name="password" id="id_password" required placeholder="••••••••" autocomplete="current-password">
+        <div class="login-row">
+          <label class="login-remember"><input type="checkbox" name="remember" checked> Remember me</label>
+          <a class="login-forgot" href="{% url 'password_reset' %}">Forgot password?</a>
+        </div>
+        <div class="login-actions">
+          <button class="btn btn-primary" type="submit">Login</button>
+          <a class="btn btn-ghost" href="{% url 'signup' %}">Create account</a>
+        </div>
+      </form>
+      <div class="login-terms">By signing in you agree to our terms and that you have read our data policy.<br>Orbit Technology Solution PLC · Turn Ideas Into Reality</div>
+    </div>
+    <div class="login-art">
+      <img src="/static/img/login-coffee.jpg" alt="Ripe red coffee cherries on the branch">
+      <div class="login-badge">{% icon 'arrow' 22 %}</div>
+      <div class="login-tag">From cherry to cup — powered by Orbit ERP</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
